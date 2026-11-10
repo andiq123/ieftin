@@ -103,6 +103,10 @@ impl LiveSearch {
         if cache.len() >= CACHE_CAPACITY {
             cache.retain(|_, (stored, _)| stored.elapsed() < CACHE_TTL);
         }
+        if cache.len() >= CACHE_CAPACITY {
+            // Still full of fresh answers: start over rather than grow without bound.
+            cache.clear();
+        }
         cache.insert(cache_key, (Instant::now(), offers.clone()));
         Ok(offers)
     }

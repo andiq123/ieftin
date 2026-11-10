@@ -1,3 +1,4 @@
+import { ApiError } from '../api/client.ts'
 import { useSearch } from '../api/queries.ts'
 import type { SourceReport, Store } from '../api/types.ts'
 import type { Filters as FiltersState, UpdateFilters } from '../lib/filters.ts'
@@ -20,9 +21,15 @@ export function Results({ filters, updateFilters, stores }: Props) {
   const isSaved = savedLookup(useFavorites())
 
   if (search.isError) {
+    const limited = search.error instanceof ApiError && search.error.status === 429
     return (
-      <Notice icon="alert" title="Search failed" alert action={{ label: 'Try again', onClick: () => search.refetch() }}>
-        Check that the server is running.
+      <Notice
+        icon={limited ? 'clock' : 'alert'}
+        title={limited ? 'Too many searches' : 'Search failed'}
+        alert
+        action={{ label: 'Try again', onClick: () => search.refetch() }}
+      >
+        {limited ? 'Wait a minute, then search again.' : 'Ieftin could not be reached. Try again in a moment.'}
       </Notice>
     )
   }

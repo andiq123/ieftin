@@ -1,5 +1,6 @@
 import { useStores } from './api/queries.ts'
 import { Activity } from './components/Activity.tsx'
+import { ConnectionToast } from './components/ConnectionToast.tsx'
 import { Home } from './components/Home.tsx'
 import { Link } from './components/Link.tsx'
 import { OfferBar } from './components/OfferBar.tsx'
@@ -69,6 +70,7 @@ export function App() {
         )}
       </main>
 
+      <ConnectionToast />
       <TabBar current={onStoresPage ? 'stores' : onSavedPage ? 'saved' : 'search'} busy={stores.some(isBusy)} />
     </>
   )

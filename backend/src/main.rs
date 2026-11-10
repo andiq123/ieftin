@@ -8,7 +8,7 @@ mod repo;
 mod search;
 mod stores;
 
-use std::sync::Arc;
+use std::{net::SocketAddr, sync::Arc};
 
 use anyhow::Context;
 use sqlx::postgres::PgPoolOptions;
@@ -43,10 +43,29 @@ async fn main() -> anyhow::Result<()> {
 
     let listener = TcpListener::bind(config.bind_addr).await?;
     tracing::info!("listening on http://{}", config.bind_addr);
-    axum::serve(listener, api::router(api::AppState { pool, monitor, live, crawl_interval: config.crawl.interval }))
-        .with_graceful_shutdown(async {
-            tokio::signal::ctrl_c().await.ok();
-        })
+    let state = api::AppState { pool, monitor, live, crawl_interval: config.crawl.interval };
+    let app = api::router(state, config.cors_origins);
+    // The search rate limit needs each connection's address.
+    axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
+        .with_graceful_shutdown(shutdown_requested())
         .await?;
     Ok(())
+}
+
+/// Resolves on Ctrl+C, or on the SIGTERM a container runtime sends to stop the app.
+async fn shutdown_requested() {
+    let interrupt = tokio::signal::ctrl_c();
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{SignalKind, signal};
+        match signal(SignalKind::terminate()) {
+            Ok(mut terminate) => tokio::select! {
+                _ = interrupt => {}
+                _ = terminate.recv() => {}
+            },
+            Err(_) => drop(interrupt.await),
+        }
+    }
+    #[cfg(not(unix))]
+    drop(interrupt.await);
 }

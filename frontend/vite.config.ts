@@ -1,14 +1,16 @@
 import react from '@vitejs/plugin-react'
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 
-// Ports come from the root .env (exported by start.sh); the defaults match .env.example.
-const backend = `http://${process.env.BIND_ADDR ?? '127.0.0.1:8090'}`
-
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    port: Number(process.env.FRONTEND_PORT ?? 5180),
-    strictPort: true,
-    proxy: { '/api': backend },
-  },
+// Settings come from frontend/.env (see .env.example) or the environment, which wins:
+// start.sh passes the backend's real address, so the two cannot drift apart.
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, import.meta.dirname, '')
+  return {
+    plugins: [react()],
+    server: {
+      port: Number(env.FRONTEND_PORT || 5180),
+      strictPort: true,
+      proxy: { '/api': env.BACKEND_URL || 'http://127.0.0.1:8090' },
+    },
+  }
 })

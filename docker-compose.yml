@@ -1,19 +1,21 @@
 name: ieftin
 
+# The development database. Its credentials are fixed and match DATABASE_URL in
+# backend/.env.example; start.sh takes the port from that DATABASE_URL.
 services:
   db:
     image: postgres:18-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ieftin
+      POSTGRES_PASSWORD: ieftin
+      POSTGRES_DB: ieftin
     ports:
-      - "127.0.0.1:${POSTGRES_PORT}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5544}:5432"
     volumes:
       - db-data:/var/lib/postgresql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      test: ["CMD-SHELL", "pg_isready -U ieftin -d ieftin"]
       interval: 2s
       timeout: 3s
       retries: 30

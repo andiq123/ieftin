@@ -8,6 +8,8 @@ import type { PriceHistory, SearchResults, Store } from './types.ts'
 const PAGE_SIZE = 40
 const LIVE_INTERVAL = 2_000
 const IDLE_INTERVAL = 30_000
+/** While the backend is unreachable, so the app notices quickly when it is back. */
+const RETRY_INTERVAL = 5_000
 
 /** Stores with their live state. Polled fast while anything is running, so the
  *  page follows checks and crawls without a refresh, and slowly otherwise. */
@@ -15,7 +17,8 @@ export function useStores() {
   return useQuery({
     queryKey: ['stores'],
     queryFn: () => get<Store[]>('/stores'),
-    refetchInterval: ({ state }) => (state.data?.some(isBusy) ? LIVE_INTERVAL : IDLE_INTERVAL),
+    refetchInterval: ({ state }) =>
+      state.errorUpdatedAt > state.dataUpdatedAt ? RETRY_INTERVAL : state.data?.some(isBusy) ? LIVE_INTERVAL : IDLE_INTERVAL,
   })
 }
 

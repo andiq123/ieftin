@@ -20,7 +20,38 @@ the database schema):
 
 Requires Docker, Rust and Node.js. The script starts PostgreSQL, builds and starts the
 backend (which applies migrations and starts the health checks and daily crawls), then starts the frontend at
-<http://localhost:5180>. Settings live in `.env` (created from `.env.example`).
+<http://localhost:5180>.
+
+## Settings
+
+Each side has its own file, created from its example on first run. Everything has a
+working default, so neither file needs editing to develop.
+
+| File | Setting | Default |
+| --- | --- | --- |
+| `backend/.env` | `DATABASE_URL` (required) | the local database from `docker-compose.yml` |
+| | `BIND_ADDR` | the platform's `PORT` on every interface, else `127.0.0.1:8090` |
+| | `CORS_ORIGINS` | any website may call the API (it is public, read-only, cookie-free) |
+| | `CRAWL_ENABLED`, `CRAWL_INTERVAL_HOURS`, `CRAWL_DELAY_MS` | `true`, `24`, `300` |
+| `frontend/.env` | `VITE_API_URL` | empty: the backend is at the page's own address |
+| | `FRONTEND_PORT`, `BACKEND_URL` (development only) | `5180`, `http://127.0.0.1:8090` |
+
+`start.sh` derives the rest (the database port from `DATABASE_URL`, the address the
+dev server forwards `/api` to from `BIND_ADDR`), so nothing is configured twice.
+
+## Deploy
+
+The two sides deploy separately; each needs one setting.
+
+- **Backend** – anywhere that builds a Rust binary and provides PostgreSQL. Set
+  `DATABASE_URL`; the server listens on the platform's `PORT` and applies its own
+  migrations. It stops cleanly on SIGTERM. `/api/health` answers `ok`.
+- **Frontend** – any static host. On Vercel, import the repository with `frontend` as
+  the root directory (`frontend/vercel.json` holds the rest) and set `VITE_API_URL`
+  to the backend's public address.
+
+To restrict the API to your own frontend, set `CORS_ORIGINS` on the backend to its
+address. Searches are limited to 60 a minute per visitor either way.
 
 Live stores are searchable within seconds; indexed stores fill in as they are crawled.
 
@@ -67,7 +98,7 @@ Both feed one pipeline:
 
 ```
 start.sh              starts database, backend, frontend; Ctrl+C stops everything
-docker-compose.yml    PostgreSQL
+docker-compose.yml    PostgreSQL for development
 backend/              Rust: axum, sqlx, reqwest, scraper
   migrations/         schema
   src/stores/         store adapters and the registry of all stores

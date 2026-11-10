@@ -31,8 +31,16 @@ for tool in docker cargo npm curl; do
 done
 docker info >/dev/null 2>&1 || fail 'Docker is not running. Start Docker and try again.'
 
-[[ -f .env ]] || { cp .env.example .env; echo 'Created .env from .env.example'; }
-set -a; source .env; set +a
+# Each side has its own settings file, created from its example on first run.
+for side in backend frontend; do
+  [[ -f $side/.env ]] || { cp "$side/.env.example" "$side/.env"; echo "Created $side/.env from $side/.env.example"; }
+done
+set -a; source backend/.env; source frontend/.env; set +a
+
+# Everything else follows from those two files, so nothing is configured twice.
+: "${BIND_ADDR:=127.0.0.1:${PORT:-8090}}" "${FRONTEND_PORT:=5180}"
+[[ $DATABASE_URL =~ @[^:/]+:([0-9]+)/ ]] || fail 'DATABASE_URL in backend/.env must name a port, e.g. …@127.0.0.1:5544/ieftin'
+export BIND_ADDR FRONTEND_PORT POSTGRES_PORT=${BASH_REMATCH[1]} BACKEND_URL=http://$BIND_ADDR
 
 # --- Process management -----------------------------------------------------
 pids=()
@@ -73,7 +81,7 @@ else
   docker compose down --remove-orphans
 fi
 for port in "${BIND_ADDR##*:}" "$FRONTEND_PORT" "$POSTGRES_PORT"; do
-  port_is_free "$port" || fail "Port $port is in use by another program. Free it or change it in .env."
+  port_is_free "$port" || fail "Port $port is in use by another program. Free it or change it in backend/.env or frontend/.env."
 done
 
 trap cleanup EXIT

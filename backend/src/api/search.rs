@@ -15,6 +15,8 @@ use crate::{
 
 const DEFAULT_LIMIT: usize = 48;
 const MAX_LIMIT: usize = 100;
+/// Longer than any product name; anything beyond is not a search.
+const MAX_QUERY_CHARS: usize = 120;
 const BANI_PER_LEU: i64 = 100;
 
 /// Query string of `GET /api/search`; prices are in lei.
@@ -62,6 +64,9 @@ pub struct Response {
 
 /// Asks the live stores and the index at the same time, then ranks everything together.
 pub async fn search(State(state): State<AppState>, Query(params): Query<Params>) -> AppResult<Json<Response>> {
+    if params.q.chars().count() > MAX_QUERY_CHARS {
+        return Err(AppError::BadRequest("q is too long"));
+    }
     let text = TextQuery::parse(&params.q).ok_or(AppError::BadRequest("q must contain a word"))?;
     let live_stores = repo::healthy_live_stores(&state.pool).await?;
     let (expression, cache_key) = (text.expression(), text.normalized());
