@@ -17,6 +17,8 @@ export interface Offer {
 export interface SourceReport {
   store_id: string
   ok: boolean
+  /** Still being read by the backend: asking again soon will include it. */
+  pending: boolean
   elapsed_ms: number
 }
 

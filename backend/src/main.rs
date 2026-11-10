@@ -29,7 +29,7 @@ async fn main() -> anyhow::Result<()> {
 
     let listener = TcpListener::bind(config.bind_addr).await?;
     tracing::info!("listening on http://{}", config.bind_addr);
-    let app = api::router(api::AppState { live, health }, config.cors_origins);
+    let app = api::router(api::AppState { live, health, limit: api::RateLimit::default() }, config.cors_origins);
     // The search rate limit needs each connection's address.
     axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(shutdown_requested())

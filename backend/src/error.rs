@@ -1,17 +1,28 @@
 use axum::{
     Json,
-    http::StatusCode,
+    http::{StatusCode, header},
     response::{IntoResponse, Response},
 };
 use serde_json::json;
 
-/// A request the API cannot answer, with the reason shown to the caller.
+/// Why the API would not answer a request, with what the caller is told.
 #[derive(Debug, thiserror::Error)]
-#[error("{0}")]
-pub struct BadRequest(pub &'static str);
+pub enum ApiError {
+    #[error("{0}")]
+    BadRequest(&'static str),
+    #[error("too many searches")]
+    TooManyRequests { retry_after_seconds: u64 },
+}
 
-impl IntoResponse for BadRequest {
+impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        (StatusCode::BAD_REQUEST, Json(json!({ "error": self.0 }))).into_response()
+        let body = Json(json!({ "error": self.to_string() }));
+        match self {
+            Self::BadRequest(_) => (StatusCode::BAD_REQUEST, body).into_response(),
+            Self::TooManyRequests { retry_after_seconds } => {
+                let retry_after = [(header::RETRY_AFTER, retry_after_seconds.to_string())];
+                (StatusCode::TOO_MANY_REQUESTS, retry_after, body).into_response()
+            }
+        }
     }
 }

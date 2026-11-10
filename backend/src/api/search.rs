@@ -1,13 +1,16 @@
+use std::{net::SocketAddr, time::Instant};
+
 use axum::{
     Json,
-    extract::{Query, State},
+    extract::{ConnectInfo, Query, State},
+    http::HeaderMap,
 };
 use serde::{Deserialize, Serialize};
 
-use super::AppState;
+use super::{AppState, limit};
 use crate::{
     domain::Offer,
-    error::BadRequest,
+    error::ApiError,
     live::SourceReport,
     search::{Filters, Results, Sort, TextQuery, assemble, normalize},
 };
@@ -61,14 +64,29 @@ pub struct Response {
     sources: Vec<SourceReport>,
 }
 
-/// Asks every working store at once, then ranks what they answer together.
-pub async fn search(State(state): State<AppState>, Query(params): Query<Params>) -> Result<Json<Response>, BadRequest> {
+/// Asks every working store at once and ranks what has arrived so far. Stores still
+/// answering are reported as pending; asking again includes them as they come in.
+pub async fn search(
+    State(state): State<AppState>,
+    ConnectInfo(peer): ConnectInfo<SocketAddr>,
+    headers: HeaderMap,
+    Query(params): Query<Params>,
+) -> Result<Json<Response>, ApiError> {
     if params.q.chars().count() > MAX_QUERY_CHARS {
-        return Err(BadRequest("q is too long"));
+        return Err(ApiError::BadRequest("q is too long"));
     }
-    let text = TextQuery::parse(&params.q).ok_or(BadRequest("q must contain a word"))?;
+    let text = TextQuery::parse(&params.q).ok_or(ApiError::BadRequest("q must contain a word"))?;
+    let key = text.normalized();
     let working = |store: &str| state.health.of(store).usable();
-    let answers = state.live.search(working, params.q.trim(), &text.normalized()).await;
+    // Only a search that sends requests to stores counts against the client's limit.
+    if state.live.is_new(working, &key) {
+        let client = limit::client(&headers, peer);
+        state
+            .limit
+            .admit(client, Instant::now())
+            .map_err(|retry_after_seconds| ApiError::TooManyRequests { retry_after_seconds })?;
+    }
+    let answers = state.live.search(working, params.q.trim(), &key).await;
 
     let mut offers = Vec::new();
     let mut sources = Vec::with_capacity(answers.len());

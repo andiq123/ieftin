@@ -1,5 +1,6 @@
-//! A per-client request limit for the search endpoint. A search makes this server
-//! ask every live store, so one client must not be able to turn it into a flood.
+//! A per-client limit on new searches. A new search makes this server ask every
+//! store, so one client must not be able to turn it into a flood. Repeats of a search
+//! that is cached or still under way cost the stores nothing and are not counted.
 
 use std::{
     collections::HashMap,
@@ -8,12 +9,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use axum::{
-    extract::{ConnectInfo, Request, State},
-    http::{HeaderMap, StatusCode, header},
-    middleware::Next,
-    response::{IntoResponse, Response},
-};
+use axum::http::HeaderMap;
 
 const WINDOW: Duration = Duration::from_secs(60);
 /// Searches one client may make per window; generous for a person, tight for a script.
@@ -28,8 +24,8 @@ const FORWARDED_CLIENT: &str = "cf-connecting-ip";
 pub struct RateLimit(Arc<Mutex<HashMap<IpAddr, (Instant, u32)>>>);
 
 impl RateLimit {
-    /// Counts a request; `Err` holds the seconds until the client may try again.
-    fn admit(&self, client: IpAddr, now: Instant) -> Result<(), u64> {
+    /// Counts a new search; `Err` holds the seconds until the client may try again.
+    pub fn admit(&self, client: IpAddr, now: Instant) -> Result<(), u64> {
         let mut clients = self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
         if clients.len() > PRUNE_ABOVE {
             clients.retain(|_, (started, _)| now.duration_since(*started) < WINDOW);
@@ -46,24 +42,9 @@ impl RateLimit {
     }
 }
 
-pub async fn enforce(
-    State(limit): State<RateLimit>,
-    ConnectInfo(peer): ConnectInfo<SocketAddr>,
-    request: Request,
-    next: Next,
-) -> Response {
-    match limit.admit(client(request.headers(), peer), Instant::now()) {
-        Ok(()) => next.run(request).await,
-        Err(seconds) => {
-            (StatusCode::TOO_MANY_REQUESTS, [(header::RETRY_AFTER, seconds.to_string())], "too many searches")
-                .into_response()
-        }
-    }
-}
-
 /// The visitor's address. Behind the tunnel every connection comes from the same
 /// local proxy, so the address it forwards is used when the peer is local.
-fn client(headers: &HeaderMap, peer: SocketAddr) -> IpAddr {
+pub fn client(headers: &HeaderMap, peer: SocketAddr) -> IpAddr {
     let forwarded = headers.get(FORWARDED_CLIENT).and_then(|value| value.to_str().ok()?.trim().parse().ok());
     forwarded.filter(|_| peer.ip().is_loopback()).unwrap_or_else(|| peer.ip())
 }

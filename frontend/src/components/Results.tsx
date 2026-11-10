@@ -94,13 +94,19 @@ export function Results({ filters, updateFilters, stores }: Props) {
         </div>
 
         {offers.length === 0 ? (
-          <Notice icon="search" title="No offers">
-            Try fewer words or remove a filter.
-          </Notice>
+          first.sources.some((source) => source.pending) ? (
+            <Notice icon="spinner" title="Nothing yet">
+              Some stores are still answering.
+            </Notice>
+          ) : (
+            <Notice icon="search" title="No offers">
+              Try fewer words or remove a filter.
+            </Notice>
+          )
         ) : (
-          // Keyed by the first page, so a different answer rises in while
-          // "show more" extends the list in place.
-          <ol className="list offers stagger" key={`${first.total}:${first.offers[0]?.url}`}>
+          // Keyed by the search, so a different search rises in, while offers that
+          // arrive from slower stores and "show more" extend the list in place.
+          <ol className="list offers stagger" key={JSON.stringify(filters)}>
             {offers.map((offer, index) => {
               // Ties share the lowest price, but only the first row carries the price tag.
               const cheapest = cheapestBani !== undefined && index === 0
@@ -150,19 +156,31 @@ interface SourcesProps {
   storeName: (id: string) => string
 }
 
-/** Says where this answer came from: how many stores answered, and which were silent. */
+/** Says where this answer came from: how many stores answered, which are still
+ *  loading in the background, and which were silent. */
 function Sources({ reports, storeName }: SourcesProps) {
   if (reports.length === 0) return null
-  const names = (ok: boolean) => reports.filter((report) => report.ok === ok).map((report) => storeName(report.store_id))
-  const [answered, silent] = [names(true), names(false)]
-  const slowest = Math.max(...reports.map((report) => report.elapsed_ms))
+  const names = (pick: (report: SourceReport) => boolean) =>
+    reports.filter(pick).map((report) => storeName(report.store_id))
+  const answered = names((report) => report.ok)
+  const loading = names((report) => report.pending)
+  const silent = names((report) => !report.ok && !report.pending)
+  const slowest = Math.max(0, ...reports.filter((report) => report.ok).map((report) => report.elapsed_ms))
   return (
     <>
       <span className="fact" title={answered.join(', ')}>
         <Icon name="bolt" />
-        {answered.length} {answered.length === 1 ? 'store' : 'stores'} asked just now
-        {slowest >= 300 && ` in ${(slowest / 1000).toFixed(1)} s`}
+        {loading.length > 0
+          ? `${answered.length} of ${reports.length} stores answered`
+          : `${answered.length} ${answered.length === 1 ? 'store' : 'stores'} asked just now`}
+        {loading.length === 0 && slowest >= 300 && ` in ${(slowest / 1000).toFixed(1)} s`}
       </span>
+      {loading.length > 0 && (
+        <span className="fact">
+          <Icon name="spinner" />
+          Still loading: {loading.length > 4 ? `${loading.length} stores` : loading.join(', ')}
+        </span>
+      )}
       {silent.length > 0 && (
         <span className="fact fact--warn">
           <Icon name="alert" />
