@@ -4,7 +4,7 @@
 use super::{Store, css::CssSearch, darwin::Darwin};
 
 /// Stores whose search results are plain HTML cards.
-const CSS: [CssSearch; 14] = [
+const CSS: [CssSearch; 15] = [
     CssSearch {
         id: "bomba",
         name: "Bomba",
@@ -149,6 +149,19 @@ const CSS: [CssSearch; 14] = [
         price: ".card-price_curr",
         old_price: None,
         image: Some((".card-img-picture img", "data-src")),
+    },
+    CssSearch {
+        id: "primepc",
+        name: "Prime PC",
+        home: "https://prime-pc.md",
+        search: "https://prime-pc.md/products?keyword={}",
+        probe: "samsung",
+        card: "div.product",
+        link: "a",
+        title: Some(".product_name h3"),
+        price: ".product_price",
+        old_price: None,
+        image: Some((".carousel-item.active img", "src")),
     },
     CssSearch {
         id: "istore",

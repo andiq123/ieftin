@@ -24,7 +24,7 @@ search ──▶ every working store's own search page, asked now ──▶ one 
 - **Live search** – a search asks each store's own search page at that moment
   (robots.txt obeyed, requests to one store spaced out). Answers are reused for 10
   minutes, so paging and repeated searches cost the stores nothing. A store that has
-  not answered within 5 seconds is left out of that search and named on the page.
+  not answered within 8 seconds is left out of that search and named on the page.
 - **Matching** – every word must appear in the title; case, diacritics and
   `256GB`/`256 GB` differences are ignored, and common synonyms are expanded (`ps5`
   finds "PlayStation 5"). Stores' own searches are fuzzier, so this is applied to
@@ -117,9 +117,9 @@ CssSearch {
 
 Anything else gets a small adapter implementing `Store`, as `darwin.rs` does. A store
 can only be added if its robots.txt allows automated use of its search page, its
-results are in the page's HTML, and it answers within the five-second limit. That
-rules out, today: Maximum, Ultra, Enter, Atehno, Breezy, TopSale (search disallowed),
-Alo, BigShop, Xiaomi Store (results built in the browser) and Prime PC (too slow).
+results are in the page's HTML, and it answers within the eight-second limit. That
+rules out, today: Maximum, Ultra, Enter, Atehno, Breezy, TopSale (search disallowed)
+and Alo, BigShop, Xiaomi Store (results built in the browser).
 
 ## API
 

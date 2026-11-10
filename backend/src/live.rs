@@ -16,9 +16,10 @@ use crate::{
     stores::Store,
 };
 
-/// A search waits this long for a store before answering without it. Every search is
-/// as slow as its slowest store, so a store that needs longer is not worth waiting for.
-const TIMEOUT: Duration = Duration::from_secs(5);
+/// A search waits this long for a store before answering without it. Long enough for
+/// the slowest store worth having (Prime PC needs about six seconds); every search
+/// is as slow as its slowest store, so this is also the longest a search can take.
+const TIMEOUT: Duration = Duration::from_secs(8);
 /// Minimum time between two requests to the same store.
 const PAUSE: Duration = Duration::from_millis(300);
 /// How long a store's answer to a query is reused. Prices rarely move within minutes.
