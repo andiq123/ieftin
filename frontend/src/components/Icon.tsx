@@ -4,12 +4,6 @@ import type { ReactNode } from 'react'
 const PATHS = {
   check: <path d="M20 6 9 17l-5-5" />,
   spinner: <path d="M21 12a9 9 0 1 1-6.2-8.56" />,
-  lock: (
-    <>
-      <rect x="4" y="11" width="16" height="10" rx="2" />
-      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-    </>
-  ),
   empty: (
     <>
       <circle cx="12" cy="12" r="9" />
