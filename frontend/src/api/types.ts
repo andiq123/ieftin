@@ -43,6 +43,8 @@ export interface Store {
   status: Health | null
   detail: string | null
   checked_at: string | null
+  /** How long the store took to answer its latest test, when it answered. */
+  latency_ms: number | null
   /** A test search is running right now. */
   checking: boolean
   next_check_at: string | null

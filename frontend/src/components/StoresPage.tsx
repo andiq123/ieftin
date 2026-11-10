@@ -1,99 +1,128 @@
-import type { ReactNode } from 'react'
-import type { Store } from '../api/types.ts'
-import { relativeTime } from '../lib/format.ts'
-import { STATUSES, isSearched, statusOf } from '../lib/stores.ts'
-import { Icon, type IconName } from './Icon.tsx'
+import type { CSSProperties } from "react";
+import type { Store } from "../api/types.ts";
+import { relativeTime } from "../lib/format.ts";
+import { type Status, STATUSES, isBusy, statusOf } from "../lib/stores.ts";
+import { Icon } from "./Icon.tsx";
 
-/** Every store: those asked on each search, and those that cannot be used right now. */
+/** Failing stores first, so what needs attention is on top; then by name. */
+const ORDER: Status[] = ["unreachable", "blocked", "no_data", "pending", "ok"];
+const byUrgency = (a: Store, b: Store) =>
+  ORDER.indexOf(statusOf(a)) - ORDER.indexOf(statusOf(b)) ||
+  a.name.localeCompare(b.name);
+
+/** The health of every store, as it is right now: the page follows the backend's
+ *  tests while they run. Green means the store answers searches. */
 export function StoresPage({ stores }: { stores: Store[] }) {
-  const searched = stores.filter(isSearched)
-  const failing = stores.filter((store) => !isSearched(store))
+  const sorted = [...stores].sort(byUrgency);
+  const slowest = Math.max(1, ...stores.map((store) => store.latency_ms ?? 0));
 
   return (
     <section className="stagger">
       <h1 className="large-title">Stores</h1>
-
-      <div className="status-bar" aria-hidden="true">
-        <span className="status-bar__part tone--busy" style={{ flexGrow: searched.length }} />
-        <span className="status-bar__part tone--pending" style={{ flexGrow: failing.length }} />
-      </div>
-
-      <Group icon="bolt" tone="busy" title="Searched" count={searched.length} note="Asked on every search">
-        <ul className="tiles">
-          {searched.map((store) => (
-            <li key={store.id} className="tile">
-              <StoreLink store={store} />
-              <span className="muted">
-                {store.checking ? 'testing…' : store.checked_at ? `tested ${relativeTime(store.checked_at)}` : 'queued'}
-              </span>
-              <Icon
-                name={store.checking ? 'spinner' : STATUSES[statusOf(store)].icon}
-                className="tone"
-                label={store.checking ? 'Being tested' : STATUSES[statusOf(store)].label}
-              />
-            </li>
-          ))}
-        </ul>
-      </Group>
-
-      <Group icon="empty" tone="pending" title="Not working" count={failing.length} note="Left out, retried regularly">
-        <ul className="list">
-          {failing.map((store) => {
-            const status = statusOf(store)
-            return (
-              <li key={store.id} className={`inactive tone--${status}`} title={store.detail ?? undefined}>
-                <span className="glyph">
-                  <Icon name={store.checking ? 'spinner' : STATUSES[status].icon} />
-                </span>
-                <StoreLink store={store} />
-                <span className="muted">{STATUSES[status].label}</span>
-                <span className="fact">
-                  <Icon name="clock" label="Next test" />
-                  {store.checking ? 'testing…' : store.next_check_at ? relativeTime(store.next_check_at) : 'soon'}
-                </span>
-              </li>
-            )
-          })}
-        </ul>
-      </Group>
+      {stores.length > 0 && <Summary stores={sorted} />}
+      <ul className="list health">
+        {sorted.map((store) => (
+          <StoreRow key={store.id} store={store} slowest={slowest} />
+        ))}
+      </ul>
     </section>
-  )
+  );
 }
 
-interface GroupProps {
-  icon: IconName
-  tone: string
-  title: string
-  count: number
-  note: string
-  children: ReactNode
-}
+/** The whole picture in one line, over a strip with one segment per store. */
+function Summary({ stores }: { stores: Store[] }) {
+  const working = stores.filter((store) => store.status === "ok").length;
+  const testing = stores.filter(isBusy).length;
+  const tested = stores.filter((store) => store.checked_at);
+  const latest = tested
+    .map((store) => Date.parse(store.checked_at!))
+    .reduce((a, b) => Math.max(a, b), 0);
+  const tone =
+    working === stores.length
+      ? "ok"
+      : working === 0 && testing === 0
+        ? "blocked"
+        : testing > 0
+          ? "busy"
+          : "no_data";
 
-/** A heading that says what the group is, then its stores. */
-function Group({ icon, tone, title, count, note, children }: GroupProps) {
-  if (count === 0) return null
   return (
-    <section className={`group tone--${tone}`}>
-      <header className="group__head">
+    <header className={`health-summary tone--${tone}`} aria-live="polite">
+      <span className={testing > 0 ? "beacon beacon--busy" : "beacon"} />
+      <div>
         <h2>
-          <span className="glyph">
-            <Icon name={icon} />
-          </span>
-          {title}
-          <span className="group__count">{count}</span>
+          {working === stores.length
+            ? `All ${working} stores working`
+            : `${working} of ${stores.length} stores working`}
         </h2>
-        <p className="group__note">{note}</p>
-      </header>
-      {children}
-    </section>
-  )
+        <p className="muted">
+          {testing > 0
+            ? `Testing ${testing} ${testing === 1 ? "store" : "stores"}…`
+            : `Last tested ${relativeTime(latest)} · retested automatically`}
+        </p>
+      </div>
+      <div className="health-strip" aria-hidden="true">
+        {stores.map((store) => (
+          <span
+            key={store.id}
+            className={`tone--${statusOf(store)}`}
+            title={store.name}
+          />
+        ))}
+      </div>
+    </header>
+  );
 }
 
-function StoreLink({ store }: { store: Store }) {
+function StoreRow({ store, slowest }: { store: Store; slowest: number }) {
+  const status = statusOf(store);
+  const working = status === "ok";
   return (
-    <a className="store-link" href={store.url} target="_blank" rel="noreferrer">
-      {store.name}
-      <Icon name="external" />
-    </a>
-  )
+    <li className={`health__row tone--${status}`}>
+      <span
+        className={store.checking ? "beacon beacon--busy" : "beacon"}
+        title={STATUSES[status].label}
+      />
+      <div className="health__name">
+        <a
+          className="store-link"
+          href={store.url}
+          target="_blank"
+          rel="noreferrer"
+        >
+          {store.name}
+          <Icon name="external" />
+        </a>
+        <span className="muted">
+          {store.checking
+            ? "Testing now…"
+            : working
+              ? `Working · tested ${relativeTime(store.checked_at!)}`
+              : STATUSES[status].label}
+          {!working &&
+            !store.checking &&
+            store.next_check_at &&
+            ` · retry ${relativeTime(store.next_check_at)}`}
+        </span>
+      </div>
+      {working && store.latency_ms !== null && (
+        <div
+          className="health__speed"
+          title="How long the store took to answer the test search"
+        >
+          <span className="fact">{formatLatency(store.latency_ms)}</span>
+          <span
+            className="meter"
+            style={{ "--share": store.latency_ms / slowest } as CSSProperties}
+          />
+        </div>
+      )}
+      {!working && store.detail && !store.checking && (
+        <span className="health__reason muted">{store.detail}</span>
+      )}
+    </li>
+  );
 }
+
+const formatLatency = (ms: number) =>
+  ms < 1000 ? `${ms} ms` : `${(ms / 1000).toFixed(1)} s`;

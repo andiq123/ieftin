@@ -6,7 +6,7 @@ import type { SearchResults, Store } from './types.ts'
 
 const PAGE_SIZE = 40
 const LIVE_INTERVAL = 2_000
-const IDLE_INTERVAL = 30_000
+const IDLE_INTERVAL = 15_000
 /** While the backend is unreachable, so the app notices quickly when it is back. */
 const RETRY_INTERVAL = 5_000
 

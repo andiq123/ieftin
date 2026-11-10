@@ -36,7 +36,8 @@ search ──▶ every working store's own search page, asked now ──▶ one 
 - **Health check** – each store is tested with a known query when the server starts
   and every six hours after. One that fails is left out of searches and retried
   every half hour. The *Stores* page shows each store's state. Nothing is stored: a
-  restart simply tests again.
+  restart simply tests again. The page follows the tests as they run and shows how
+  fast each store answered.
 - **Saved offers** – kept in the browser's local storage, no account, as they were
   when saved.
 

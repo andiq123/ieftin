@@ -5,7 +5,7 @@
 use std::{
     collections::HashMap,
     sync::{Arc, RwLock},
-    time::Duration,
+    time::{Duration, Instant},
 };
 
 use chrono::{DateTime, Utc};
@@ -41,6 +41,8 @@ pub struct Report {
     pub status: Option<Status>,
     pub detail: Option<String>,
     pub checked_at: Option<DateTime<Utc>>,
+    /// How long the store took to answer the test, when it answered.
+    pub latency_ms: Option<u64>,
     /// A test is running right now.
     pub checking: bool,
 }
@@ -77,7 +79,10 @@ pub fn spawn_checks(live: Arc<LiveSearch>, health: &Health) {
         tokio::spawn(async move {
             loop {
                 health.update(store, |report| report.checking = true);
-                let (status, detail) = match live.probe(store).await {
+                let started = Instant::now();
+                let outcome = live.probe(store).await;
+                let latency_ms = outcome.is_ok().then(|| started.elapsed().as_millis() as u64);
+                let (status, detail) = match outcome {
                     Ok(0) => (Status::NoData, "search answered, no price found".to_owned()),
                     Ok(offers) => (Status::Ok, format!("{offers} offers read from a test search")),
                     Err(error) => (classify(&error), error.to_string()),
@@ -87,6 +92,7 @@ pub fn spawn_checks(live: Arc<LiveSearch>, health: &Health) {
                     status: Some(status),
                     detail: Some(detail),
                     checked_at: Some(Utc::now()),
+                    latency_ms,
                     checking: false,
                 };
                 health.update(store, |current| *current = report);

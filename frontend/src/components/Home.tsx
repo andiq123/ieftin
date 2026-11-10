@@ -37,9 +37,9 @@ export function Home({ stores, onExample }: Props) {
       {stores.length > 0 && (
         <ul className="list" aria-label="Coverage">
           <li>
-            <Link className="row tone--busy" to={ROUTES.stores}>
+            <Link className="row tone--ok" to={ROUTES.stores}>
               <span className="glyph">
-                <Icon name="bolt" />
+                <Icon name="check" />
               </span>
               <span className="row__label">Stores asked on every search</span>
               <span className="row__value">{searched}</span>

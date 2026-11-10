@@ -13,6 +13,13 @@
   }
 }
 
+@keyframes ping {
+  to {
+    opacity: 0;
+    scale: 2.6;
+  }
+}
+
 @keyframes shimmer {
   to {
     background-position: -200% 0;
