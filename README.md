@@ -112,7 +112,9 @@ frontend/             React 19, TypeScript, Vite, TanStack Query
   src/lib/            URL-backed state, routing and transitions, sorting, formatting
   src/components/     UI
   src/styles/         design tokens, motion, one stylesheet per area
-  public/             web app manifest and icons (installable as a PWA)
+  public/             web app manifest, icons and the service worker that keeps the
+                      app's own files for offline starts (installable as a PWA)
+  icons/              icon sources; the PNGs in public/ are rendered from these
 ```
 
 ## Stores

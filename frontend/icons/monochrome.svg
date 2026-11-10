@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <!-- Single-colour silhouette for themed icons; only its alpha channel is used. -->
+  <path transform="rotate(-9 512 512)" fill="#fff" fill-rule="evenodd" d="
+    M310 292h404a104 104 0 0 1 104 104v220a104 104 0 0 1-104 104H310a104 104 0 0 1-104-104V396a104 104 0 0 1 104-104Z
+    M306 470a36 36 0 1 0 0 72a36 36 0 1 0 0-72Z
+    M470 376h62v260h-62Z
+    M578 376h62v60h-62Z
+    M578 474h62v162h-62Z"/>
+</svg>
