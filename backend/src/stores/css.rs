@@ -19,6 +19,7 @@ pub struct CssSearch {
     pub card: &'static str,
     /// The link to the product page; its text is the title unless `title` is set.
     pub link: &'static str,
+    /// Where the title is instead; several matching elements are read in order.
     pub title: Option<&'static str>,
     pub price: &'static str,
     pub old_price: Option<&'static str>,
@@ -54,6 +55,13 @@ impl Store for CssSearch {
 }
 
 impl CssSearch {
+    /// The text of every element the title selector matches, joined in page order.
+    fn title_of(&self, card: ElementRef) -> Option<String> {
+        let selector = Selector::parse(self.title?).ok()?;
+        let parts: Vec<String> = card.select(&selector).map(parse::text).filter(|part| !part.is_empty()).collect();
+        (!parts.is_empty()).then(|| parts.join(" "))
+    }
+
     fn offer(&self, card: ElementRef, page: &Url) -> Option<ScrapedOffer> {
         let first = |css: &str| Selector::parse(css).ok().and_then(|selector| card.select(&selector).next());
         let price_of = |css: &str| first(css).and_then(parse::price_in);
@@ -62,7 +70,7 @@ impl CssSearch {
 
         Some(ScrapedOffer {
             external_id: url.path().to_owned(),
-            title: Some(parse::text(self.title.and_then(first).unwrap_or(link))).filter(|title| !title.is_empty())?,
+            title: Some(self.title_of(card).unwrap_or_else(|| parse::text(link))).filter(|title| !title.is_empty())?,
             image_url: self.image.and_then(|(css, attribute)| parse::link(first(css)?, attribute, page)),
             category: None,
             price: price_of(self.price)?,
@@ -90,6 +98,15 @@ mod tests {
         old_price: Some(".old"),
         image: Some(("img", "src")),
     };
+
+    #[test]
+    fn joins_a_title_kept_in_several_elements() {
+        let shop = CssSearch { title: Some(".model, .variant"), ..SHOP };
+        let html = r#"<div class="card"><a class="name" href="/p/1"><b class="model">Apple iPhone 15</b></a>
+            <span class="variant">6 GB / 128 GB / Blue</span><span class="price">14 999 lei</span></div>"#;
+        let offers = shop.parse_results(html, &Url::parse("https://shop.md/search?q=iphone").unwrap());
+        assert_eq!(offers[0].title, "Apple iPhone 15 6 GB / 128 GB / Blue");
+    }
 
     #[test]
     fn builds_an_encoded_search_url() {

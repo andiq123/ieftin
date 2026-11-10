@@ -34,7 +34,7 @@ const SYNONYMS: [&[&str]; 4] = [
 
 /// Things sold *for* a product rather than the product itself. A listing that names
 /// one of these is an accessory, wherever the word stands in its title.
-const ACCESSORY_WORDS: [&str; 34] = [
+const ACCESSORY_WORDS: [&str; 37] = [
     "husa",
     "huse",
     "case",
@@ -69,6 +69,9 @@ const ACCESSORY_WORDS: [&str; 34] = [
     "skin",
     "sticker",
     "stickere",
+    "acumulator",
+    "baterie",
+    "battery",
 ];
 /// Words that mark an accessory only when a title opens with them: "Joc PS5 …" is a
 /// game, while "PlayStation 5 + joc" is a console sold with one.
@@ -171,6 +174,7 @@ mod tests {
         assert!(accessory("Original iPhone 15 Pro Silicone Case Black"));
         assert!(accessory("Sticla de pro tectie HELMET DIAMOND 5D IPHONE 15 PRO , BLACK"));
         assert!(accessory("Joc PS5 EA Sports FC 25"));
+        assert!(accessory("Acumulator Hoco Battery J112 Pro for Apple iPhone 15 Pro"));
         assert!(!accessory("Telefon mobil iPhone 15 Pro 1TB Blue Titanium"));
         assert!(!accessory("Consolă Sony PlayStation 5 Slim + joc EA FC 25"));
         assert!(!accessory("Laptop gaming ASUS ROG Strix"));
