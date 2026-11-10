@@ -13,7 +13,7 @@ export type Tab = (typeof TABS)[number]['id']
 
 interface Props {
   current: Tab
-  /** Background work is running for some store. */
+  /** Some store is being tested right now. */
   busy: boolean
 }
 
@@ -45,7 +45,7 @@ export function TabBar({ current, busy }: Props) {
           onFollow={() => setChosen(id)}
         >
           <Icon name={icon} />
-          {id === 'stores' && busy && <span className="pulse" title="Updating stores" />}
+          {id === 'stores' && busy && <span className="pulse" title="Testing stores" />}
           {label}
         </Link>
       ))}

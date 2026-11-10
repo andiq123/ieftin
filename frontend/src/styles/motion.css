@@ -92,7 +92,7 @@
   animation-timing-function: var(--spring);
 }
 
-:root:is([data-transition='page'], [data-transition='push'], [data-transition='pop']) .page {
+:root[data-transition] .page {
   view-transition-name: page;
 }
 
@@ -111,38 +111,6 @@
   animation: page-in var(--slow) var(--spring) 120ms both;
 }
 
-/* Opening a detail page pushes it in from the right; going back pulls it away. */
-:root[data-transition='push']::view-transition-old(page) {
-  animation: push-under var(--medium) var(--spring) both;
-}
-
-:root[data-transition='push']::view-transition-new(page) {
-  animation: push-over var(--medium) var(--spring) both;
-}
-
-:root[data-transition='pop']::view-transition-old(page) {
-  z-index: 1;
-  animation: push-over var(--medium) var(--spring) both reverse;
-}
-
-:root[data-transition='pop']::view-transition-new(page) {
-  animation: push-under var(--medium) var(--spring) both reverse;
-}
-
-@keyframes push-over {
-  from {
-    opacity: 0;
-    translate: min(100%, 24rem) 0;
-  }
-}
-
-@keyframes push-under {
-  to {
-    opacity: 0;
-    translate: max(-30%, -8rem) 0;
-  }
-}
-
 @keyframes page-out {
   to {
     opacity: 0;
@@ -155,11 +123,6 @@
     opacity: 0;
     translate: 0 1.5rem;
   }
-}
-
-/* Reordering a list: each row glides to its new place. */
-:root[data-transition='reorder'] [style*='--vt'] {
-  view-transition-name: var(--vt);
 }
 
 @media (prefers-reduced-motion: reduce) {

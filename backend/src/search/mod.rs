@@ -1,4 +1,4 @@
-//! Search: one pipeline over offers from the index and from live store searches.
+//! Ranking: matching offers to the query and turning them into one page of results.
 
 mod engine;
 mod text;

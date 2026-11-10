@@ -49,12 +49,6 @@ const PATHS = {
       <path d="M20 20v-5h-5" />
     </>
   ),
-  database: (
-    <>
-      <ellipse cx="12" cy="6" rx="7" ry="3" />
-      <path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6" />
-    </>
-  ),
   bolt: <path d="M13 3 5 13.5h6L10 21l8-10.5h-6L13 3Z" />,
   tag: (
     <>
@@ -80,14 +74,7 @@ const PATHS = {
       <path d="M9.9 9.9a3 3 0 0 0 4.2 4.2M4 4l16 16" />
     </>
   ),
-  share: (
-    <>
-      <path d="M12 15V3.5M8 7l4-4 4 4" />
-      <path d="M8 11H6v9.5h12V11h-2" />
-    </>
-  ),
   bookmark: <path d="M6.5 4h11v16.5l-5.5-4-5.5 4V4Z" />,
-  chart: <path d="M4 5v14h16M8 15l3.5-4 3 2.5L19 8" />,
   star: <path d="m12 3.5 2.6 5.4 5.9.8-4.3 4.1 1 5.8-5.2-2.8-5.2 2.8 1-5.8-4.3-4.1 5.9-.8L12 3.5Z" />,
   box: (
     <>
@@ -99,7 +86,6 @@ const PATHS = {
   'arrow-up': <path d="M12 19V5M6 11l6-6 6 6" />,
   'arrow-down': <path d="M12 5v14M6 13l6 6 6-6" />,
   chevron: <path d="m9 6 6 6-6 6" />,
-  'chevron-left': <path d="m15 6-6 6 6 6" />,
 } satisfies Record<string, ReactNode>
 
 export type IconName = keyof typeof PATHS

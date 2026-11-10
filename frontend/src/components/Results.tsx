@@ -84,7 +84,7 @@ export function Results({ filters, updateFilters, stores }: Props) {
 
         {offers.length === 0 ? (
           <Notice icon="search" title="No offers">
-            Try fewer words or remove a filter. New stores may still be indexing.
+            Try fewer words or remove a filter.
           </Notice>
         ) : (
           // Keyed by the first page, so a different answer rises in while
@@ -139,7 +139,7 @@ interface SourcesProps {
   storeName: (id: string) => string
 }
 
-/** Says where this answer came from: which stores were asked just now, and which were silent. */
+/** Says where this answer came from: how many stores answered, and which were silent. */
 function Sources({ reports, storeName }: SourcesProps) {
   if (reports.length === 0) return null
   const names = (ok: boolean) => reports.filter((report) => report.ok === ok).map((report) => storeName(report.store_id))
@@ -149,11 +149,8 @@ function Sources({ reports, storeName }: SourcesProps) {
     <>
       <span className="fact" title={answered.join(', ')}>
         <Icon name="bolt" />
-        {answered.length} live{slowest >= 300 && ` in ${(slowest / 1000).toFixed(1)} s`}
-      </span>
-      <span className="fact">
-        <Icon name="database" />
-        Rest daily
+        {answered.length} {answered.length === 1 ? 'store' : 'stores'} asked just now
+        {slowest >= 300 && ` in ${(slowest / 1000).toFixed(1)} s`}
       </span>
       {silent.length > 0 && (
         <span className="fact fact--warn">

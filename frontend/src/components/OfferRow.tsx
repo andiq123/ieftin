@@ -1,9 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Offer } from '../api/types.ts'
-import { offerPath, withSearch } from '../lib/routes.ts'
 import { parseTitle } from '../lib/title.ts'
-import { Icon } from './Icon.tsx'
-import { Link } from './Link.tsx'
 import { OfferImage, OfferMeta, OfferPrice, SaveButton } from './OfferParts.tsx'
 
 interface Props {
@@ -18,8 +15,7 @@ interface Props {
   note?: ReactNode
 }
 
-/** One offer in a list. The row opens the store; its buttons open the price
- *  history and save the offer. */
+/** One offer in a list. The row opens the store; its button saves the offer. */
 export function OfferRow({ offer, storeName, saved, rank, cheapest, note }: Props) {
   const { title, badges } = parseTitle(offer.title)
 
@@ -39,10 +35,7 @@ export function OfferRow({ offer, storeName, saved, rank, cheapest, note }: Prop
       </div>
       <OfferPrice offer={offer}>{note && <span className="offer__note">{note}</span>}</OfferPrice>
       <div className="offer__actions">
-        <Link className="icon-button" to={withSearch(offerPath(offer))} kind="push" data={offer} label="Price history">
-          <Icon name="chart" />
-        </Link>
-        <SaveButton className="icon-button" offer={offer} saved={saved} />
+        <SaveButton offer={offer} saved={saved} />
       </div>
     </li>
   )

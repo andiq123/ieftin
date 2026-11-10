@@ -1,8 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Offer } from '../api/types.ts'
 import { toggleFavorite } from '../lib/favorites.ts'
-import { formatLei } from '../lib/format.ts'
-import { percentChange } from '../lib/history.ts'
+import { formatLei, percentChange } from '../lib/format.ts'
 import type { Badge } from '../lib/title.ts'
 import { Icon } from './Icon.tsx'
 
@@ -30,10 +29,7 @@ interface MetaProps {
 export function OfferMeta({ offer, storeName, badges }: MetaProps) {
   return (
     <p className="offer__meta">
-      <span className="offer__store">
-        {storeName}
-        {offer.live && <Icon name="bolt" label="Live price" />}
-      </span>
+      <span className="offer__store">{storeName}</span>
       {badges.map(({ icon, label }) => (
         <span key={label} className="badge">
           <Icon name={icon} />
@@ -70,39 +66,24 @@ export function OfferPrice({ offer, children }: { offer: Offer; children?: React
   )
 }
 
-/** A price move as a percentage; the arrow carries the direction. */
-export function Change({ from, to }: { from: number; to: number }) {
-  const down = to < from
-  return (
-    <span className="change muted">
-      <Icon name={down ? 'arrow-down' : 'arrow-up'} className={`tone tone--${down ? 'ok' : 'no_data'}`} />
-      {Math.abs(percentChange(from, to))}%
-    </span>
-  )
-}
-
 interface SaveProps {
   offer: Offer
   saved: boolean
-  className: string
-  /** Show the word next to the symbol. */
-  labelled?: boolean
 }
 
 /** Saves the offer on this device, or removes it. */
-export function SaveButton({ offer, saved, className, labelled }: SaveProps) {
-  const label = saved ? 'Saved' : 'Save'
+export function SaveButton({ offer, saved }: SaveProps) {
+  const label = saved ? 'Remove from saved' : 'Save'
   return (
     <button
-      className={className}
+      className="icon-button"
       type="button"
       aria-pressed={saved}
-      aria-label={labelled ? undefined : label}
-      title={saved ? 'Remove from saved' : 'Save and follow the price'}
+      aria-label={label}
+      title={label}
       onClick={() => toggleFavorite(offer)}
     >
       <Icon name="bookmark" className={saved ? 'icon--filled' : undefined} />
-      {labelled && label}
     </button>
   )
 }

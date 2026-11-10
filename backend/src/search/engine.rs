@@ -1,5 +1,4 @@
-//! Turns every matching offer into one page of results. Pure functions: where the
-//! offers came from (index or live) no longer matters here.
+//! Turns every matching offer into one page of results. Pure functions.
 
 use std::collections::{HashMap, HashSet};
 
@@ -186,7 +185,6 @@ mod tests {
             price_bani: lei * 100,
             old_price_bani: None,
             in_stock: None,
-            live: false,
         }
     }
 

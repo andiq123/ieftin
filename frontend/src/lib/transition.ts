@@ -1,8 +1,5 @@
 import { flushSync } from 'react-dom'
 
-/** What is changing, which decides how it moves (see styles/motion.css). */
-export type TransitionKind = 'page' | 'push' | 'pop' | 'reorder'
-
 export const prefersReducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
 /** How long a change may wait for its transition to start, in milliseconds. */
@@ -10,12 +7,12 @@ const MAX_WAIT = 400
 
 let latest: ViewTransition | undefined
 
-/** Applies a state change inside a view transition, so elements that moved or
- *  changed animate to their new place. Falls back to a plain update. */
-export function withTransition(kind: TransitionKind, update: () => void) {
+/** Applies a change of screen inside a view transition, so the old page sinks away
+ *  and the new one rises in (see styles/motion.css). Falls back to a plain update. */
+export function withTransition(update: () => void) {
   if (!document.startViewTransition || prefersReducedMotion()) return update()
   const root = document.documentElement
-  root.dataset.transition = kind
+  root.dataset.transition = 'page'
 
   let applied = false
   const apply = () => {

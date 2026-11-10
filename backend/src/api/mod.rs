@@ -1,9 +1,8 @@
-mod history;
 mod limit;
 mod search;
 mod stores;
 
-use std::{sync::Arc, time::Duration};
+use std::sync::Arc;
 
 use axum::{
     Router,
@@ -11,7 +10,6 @@ use axum::{
     middleware,
     routing::get,
 };
-use sqlx::PgPool;
 use tower_http::{
     compression::CompressionLayer,
     cors::{AllowOrigin, CorsLayer},
@@ -19,27 +17,22 @@ use tower_http::{
 };
 
 use self::limit::RateLimit;
-use crate::{crawler::Monitor, live::LiveSearch};
+use crate::{health::Health, live::LiveSearch};
 
 #[derive(Clone)]
 pub struct AppState {
-    pub pool: PgPool,
-    pub monitor: Monitor,
     pub live: Arc<LiveSearch>,
-    pub crawl_interval: Duration,
+    pub health: Health,
 }
 
 /// `cors_origins` are the websites whose pages may call the API; `None` allows any.
 pub fn router(state: AppState, cors_origins: Option<Vec<HeaderValue>>) -> Router {
     let origins = cors_origins.map_or_else(AllowOrigin::any, AllowOrigin::list);
+    let limited = middleware::from_fn_with_state(RateLimit::default(), limit::enforce);
     let api = Router::new()
         .route("/health", get(|| async { "ok" }))
         .route("/stores", get(stores::list))
-        .route(
-            "/search",
-            get(search::search).layer(middleware::from_fn_with_state(RateLimit::default(), limit::enforce)),
-        )
-        .route("/history", get(history::history));
+        .route("/search", get(search::search).layer(limited));
     Router::new()
         .nest("/api", api)
         .layer(CorsLayer::new().allow_origin(origins).allow_methods([Method::GET]))

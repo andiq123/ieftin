@@ -3,73 +3,16 @@ use serde::Deserialize;
 use url::Url;
 
 use super::{
-    Store, StoreInfo,
-    live::{self, LiveStore},
+    Store,
     parse::{self, selector},
+    search_url,
 };
-use crate::domain::{Bani, Page, ScrapedOffer};
+use crate::domain::{Bani, ScrapedOffer};
 
-/// The e-commerce platform behind Darwin, Enter and iStore: a category sitemap and
-/// paginated category listings with identical markup.
-pub struct DarwinPlatform {
-    id: &'static str,
-    name: &'static str,
-    home: &'static str,
-    /// The categories sitemap.
-    categories: &'static str,
-}
+/// Darwin: its search results are product cards that each carry an analytics payload.
+pub struct Darwin;
 
-impl DarwinPlatform {
-    pub const fn new(id: &'static str, name: &'static str, home: &'static str, categories: &'static str) -> Self {
-        Self { id, name, home, categories }
-    }
-}
-
-impl StoreInfo for DarwinPlatform {
-    fn id(&self) -> &'static str {
-        self.id
-    }
-
-    fn name(&self) -> &'static str {
-        self.name
-    }
-
-    fn home(&self) -> &'static str {
-        self.home
-    }
-}
-
-impl Store for DarwinPlatform {
-    fn entry(&self) -> &'static str {
-        self.categories
-    }
-
-    fn parse(&self, body: &str, url: &Url) -> Page {
-        if parse::is_sitemap(body) {
-            // The sitemap lists every category twice; keep the Romanian one.
-            let romanian = parse::sitemap_locs(body)
-                .filter(|url| url.path_segments().is_some_and(|mut path| path.next() != Some("ru")));
-            return Page { offers: Vec::new(), links: parse::leaves(romanian) };
-        }
-        let document = Html::parse_document(body);
-        let next = page_number(url) + 1;
-        Page {
-            offers: offers(&document, url),
-            links: document
-                .select(selector!("a[href*='page=']"))
-                .filter_map(|anchor| parse::link(anchor, "href", url))
-                .find(|link| page_number(link) == next)
-                .into_iter()
-                .collect(),
-        }
-    }
-}
-
-/// Darwin itself allows automated use of its search page, so it is queried live.
-/// The results use the same product cards as the category listings.
-pub struct DarwinSearch;
-
-impl StoreInfo for DarwinSearch {
+impl Store for Darwin {
     fn id(&self) -> &'static str {
         "darwin"
     }
@@ -81,15 +24,13 @@ impl StoreInfo for DarwinSearch {
     fn home(&self) -> &'static str {
         "https://darwin.md"
     }
-}
 
-impl LiveStore for DarwinSearch {
     fn probe(&self) -> &'static str {
         "samsung"
     }
 
     fn search_url(&self, query: &str) -> Option<Url> {
-        live::search_url("https://darwin.md/cautare?keywords={}", query)
+        search_url("https://darwin.md/cautare?keywords={}", query)
     }
 
     fn parse_results(&self, body: &str, url: &Url) -> Vec<ScrapedOffer> {
@@ -101,13 +42,8 @@ fn offers(document: &Html, page: &Url) -> Vec<ScrapedOffer> {
     document.select(selector!("div.product-card")).filter_map(|card| offer(card, page)).collect()
 }
 
-/// The `page` query parameter; the first page has none.
-fn page_number(url: &Url) -> u32 {
-    url.query_pairs().find(|(key, _)| key == "page").and_then(|(_, page)| page.parse().ok()).unwrap_or(1)
-}
-
-/// The analytics payload each product card carries. It is the same on every skin of
-/// the platform, unlike the visible markup, so prices are read from it.
+/// The analytics payload each product card carries. Unlike the visible markup it
+/// does not change with the site's design, so prices are read from it.
 #[derive(Deserialize)]
 struct Analytics {
     ecommerce: Ecommerce,
@@ -130,7 +66,7 @@ struct AnalyticsItem {
 }
 
 fn offer(card: ElementRef, page: &Url) -> Option<ScrapedOffer> {
-    // Darwin and iStore put the payload on the product link, Enter on the card itself.
+    // The payload sits on the product link, or on the card itself.
     let payload = card
         .attr("data-gtm")
         .or_else(|| card.select(selector!("[data-ga4]")).next().and_then(|link| link.attr("data-ga4")))?;
@@ -158,10 +94,7 @@ fn offer(card: ElementRef, page: &Url) -> Option<ScrapedOffer> {
 mod tests {
     use super::*;
 
-    const DARWIN: DarwinPlatform =
-        DarwinPlatform::new("darwin", "Darwin", "https://darwin.md", "https://darwin.md/media/sitemaps/categories.xml");
-
-    const LISTING: &str = r#"
+    const RESULTS: &str = r#"
         <div class="product-card product-item">
           <div class="product-img"><img data-src="/media/1/thumb.png"></div>
           <a class="stretched-link product-link" href="https://darwin.md/iphone.html"
@@ -169,29 +102,18 @@ mod tests {
             <div class="title-product"> Apple iPhone 15 Pro
               256 GB </div>
           </a>
-        </div>
-        <a href="https://darwin.md/telefoane/smartphone?page=75">75</a>
-        <a href="https://darwin.md/telefoane/smartphone?page=2">2</a>"#;
+        </div>"#;
 
     #[test]
-    fn parses_listing() {
-        let url = Url::parse("https://darwin.md/telefoane/smartphone").unwrap();
-        let page = DARWIN.parse(LISTING, &url);
-        assert_eq!(page.links[0].query(), Some("page=2"));
-        let [offer] = page.offers.as_slice() else { panic!("expected one offer") };
+    fn reads_results() {
+        let url = Darwin.search_url("iphone 15").unwrap();
+        assert_eq!(url.as_str(), "https://darwin.md/cautare?keywords=iphone+15");
+        let offers = Darwin.parse_results(RESULTS, &url);
+        let [offer] = offers.as_slice() else { panic!("expected one offer") };
         assert_eq!(offer.external_id, "00-1");
         assert_eq!(offer.title, "Apple iPhone 15 Pro 256 GB");
         assert_eq!(offer.category.as_deref(), Some("Smartphone"));
         assert_eq!((offer.price, offer.old_price), (3_099_900, Some(3_289_900)));
         assert_eq!(offer.image_url.as_ref().unwrap().as_str(), "https://darwin.md/media/1/thumb.png");
-    }
-
-    #[test]
-    fn follows_romanian_leaf_categories() {
-        let sitemap = "<urlset><loc>https://darwin.md/telefoane</loc><loc>https://darwin.md/ru/telefoane</loc>\
-                       <loc>https://darwin.md/telefoane/smartphone</loc></urlset>";
-        let links = DARWIN.parse(sitemap, &Url::parse(DARWIN.categories).unwrap()).links;
-        assert_eq!(links.len(), 1);
-        assert_eq!(links[0].path(), "/telefoane/smartphone");
     }
 }

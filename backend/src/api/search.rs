@@ -7,9 +7,8 @@ use serde::{Deserialize, Serialize};
 use super::AppState;
 use crate::{
     domain::Offer,
-    error::{AppError, AppResult},
+    error::BadRequest,
     live::SourceReport,
-    repo,
     search::{Filters, Results, Sort, TextQuery, assemble, normalize},
 };
 
@@ -58,38 +57,25 @@ impl From<&Params> for Filters {
 pub struct Response {
     #[serde(flatten)]
     results: Results,
-    /// How each live store answered this search.
+    /// How each store answered this search.
     sources: Vec<SourceReport>,
 }
 
-/// Asks the live stores and the index at the same time, then ranks everything together.
-pub async fn search(State(state): State<AppState>, Query(params): Query<Params>) -> AppResult<Json<Response>> {
+/// Asks every working store at once, then ranks what they answer together.
+pub async fn search(State(state): State<AppState>, Query(params): Query<Params>) -> Result<Json<Response>, BadRequest> {
     if params.q.chars().count() > MAX_QUERY_CHARS {
-        return Err(AppError::BadRequest("q is too long"));
+        return Err(BadRequest("q is too long"));
     }
-    let text = TextQuery::parse(&params.q).ok_or(AppError::BadRequest("q must contain a word"))?;
-    let live_stores = repo::healthy_live_stores(&state.pool).await?;
-    let (expression, cache_key) = (text.expression(), text.normalized());
-    let (indexed, live) = tokio::join!(
-        repo::matching_offers(&state.pool, &expression),
-        state.live.search(&live_stores, params.q.trim(), &cache_key),
-    );
+    let text = TextQuery::parse(&params.q).ok_or(BadRequest("q must contain a word"))?;
+    let working = |store: &str| state.health.of(store).usable();
+    let answers = state.live.search(working, params.q.trim(), &text.normalized()).await;
 
-    let mut offers = indexed?;
-    let mut sources = Vec::with_capacity(live.len());
-    for (report, found) in live {
+    let mut offers = Vec::new();
+    let mut sources = Vec::with_capacity(answers.len());
+    for (report, found) in answers {
         // A store's own search is fuzzier than ours; keep only what really matches.
         let matching = found.iter().filter(|offer| text.matches(&normalize(&offer.title)));
-        offers.extend(matching.map(|offer| Offer::live(report.store_id, offer)));
-        if !found.is_empty() {
-            // Off the request path: the answer does not wait for the history to be written.
-            let (pool, store) = (state.pool.clone(), report.store_id);
-            tokio::spawn(async move {
-                if let Err(error) = repo::record_prices(&pool, store, &found).await {
-                    tracing::warn!(store, "recording live prices failed: {error}");
-                }
-            });
-        }
+        offers.extend(matching.map(|offer| Offer::new(report.store_id, offer)));
         sources.push(report);
     }
     Ok(Json(Response { results: assemble(offers, &text, &Filters::from(&params)), sources }))

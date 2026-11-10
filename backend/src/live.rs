@@ -1,5 +1,5 @@
-//! Live search: asks each live store's own search page for a query and reads the
-//! results, with a short-lived cache so paging and repeated searches cost nothing.
+//! Searching: asks each store's own search page for the query and reads the results,
+//! with a short-lived cache so paging and repeated searches cost the stores nothing.
 
 use std::{
     collections::HashMap,
@@ -11,13 +11,15 @@ use futures::future::join_all;
 use serde::Serialize;
 
 use crate::{
-    crawler::{FetchError, Fetcher},
     domain::ScrapedOffer,
-    stores::LiveStore,
+    fetch::{FetchError, Fetcher},
+    stores::Store,
 };
 
 /// A search waits this long for a store before answering without it.
 const TIMEOUT: Duration = Duration::from_secs(7);
+/// Minimum time between two requests to the same store.
+const PAUSE: Duration = Duration::from_millis(300);
 /// How long a store's answer to a query is reused. Prices rarely move within minutes.
 const CACHE_TTL: Duration = Duration::from_secs(600);
 const CACHE_CAPACITY: usize = 2_000;
@@ -50,30 +52,30 @@ pub struct LiveSearch {
 }
 
 struct Source {
-    store: Arc<dyn LiveStore>,
+    store: Box<dyn Store>,
     fetcher: Fetcher,
 }
 
 impl LiveSearch {
-    pub fn new(stores: Vec<Arc<dyn LiveStore>>, delay: Duration) -> reqwest::Result<Self> {
-        // A person is waiting, so a failed request is not retried.
-        let source = |store| Ok(Source { store, fetcher: Fetcher::new(delay, 1)? });
+    pub fn new(stores: Vec<Box<dyn Store>>) -> reqwest::Result<Self> {
+        let source = |store| Ok(Source { store, fetcher: Fetcher::new(PAUSE)? });
         Ok(Self { sources: stores.into_iter().map(source).collect::<reqwest::Result<_>>()?, cache: Mutex::default() })
     }
 
-    pub fn store_ids(&self) -> impl Iterator<Item = &'static str> {
-        self.sources.iter().map(|source| source.store.id())
+    pub fn stores(&self) -> impl Iterator<Item = &dyn Store> {
+        self.sources.iter().map(|source| source.store.as_ref())
     }
 
-    /// Searches the given stores concurrently. `query` is the user's text; `key` is its
-    /// normalised form, so differently typed but equal searches share cache entries.
-    pub async fn search(&self, stores: &[String], query: &str, key: &str) -> Vec<(SourceReport, Offers)> {
-        let wanted = self.sources.iter().filter(|source| stores.iter().any(|id| id == source.store.id()));
-        join_all(wanted.map(|source| async move {
+    /// Searches the stores `wanted` accepts, all at once. `query` is the user's text;
+    /// `key` is its normalised form, so differently typed but equal searches share
+    /// cache entries.
+    pub async fn search(&self, wanted: impl Fn(&str) -> bool, query: &str, key: &str) -> Vec<(SourceReport, Offers)> {
+        let sources = self.sources.iter().filter(|source| wanted(source.store.id()));
+        join_all(sources.map(|source| async move {
             let started = Instant::now();
             let result = self.cached(source, query, key).await;
             if let Err(error) = &result {
-                tracing::warn!(store = source.store.id(), query, "live search failed: {error}");
+                tracing::warn!(store = source.store.id(), query, "search failed: {error}");
             }
             let report = SourceReport {
                 store_id: source.store.id(),
@@ -85,7 +87,7 @@ impl LiveSearch {
         .await
     }
 
-    /// Runs a store's probe query, bypassing the cache; used by the health check.
+    /// Runs a store's test query, bypassing the cache; used by the health check.
     pub async fn probe(&self, store_id: &str) -> Result<usize, LiveError> {
         let source = self.sources.iter().find(|source| source.store.id() == store_id).ok_or(LiveError::Query)?;
         Ok(fetch(source, source.store.probe()).await?.len())

@@ -27,9 +27,5 @@ export function formatDay(time: string | number): string {
   return (date.getFullYear() === new Date().getFullYear() ? day : dayWithYear).format(date)
 }
 
-/** A rough remaining time: "<1 min", "~12 min", "~3 h". */
-export function formatEta(seconds: number): string {
-  if (seconds < 60) return '<1 min'
-  const minutes = Math.round(seconds / 60)
-  return minutes < 90 ? `~${minutes} min` : `~${Math.round(minutes / 60)} h`
-}
+/** Signed change from one price to another, in whole percent. */
+export const percentChange = (from: number, to: number) => Math.round(((to - from) / from) * 100)

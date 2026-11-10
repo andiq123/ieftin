@@ -31,10 +31,6 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# --- Database dumps ---------------------------------------------------------
-*.sql.gz
-*.dump
-
 # --- Editors, tools and OS --------------------------------------------------
 .DS_Store
 Thumbs.db

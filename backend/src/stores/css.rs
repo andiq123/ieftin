@@ -1,27 +1,10 @@
-//! Stores searched live: instead of crawling the catalogue, one request to the store's
-//! own search page is made when a user searches.
+//! Stores whose search results are plain HTML cards, read with CSS selectors.
 
 use scraper::{ElementRef, Html, Selector};
 use url::Url;
 
-use super::{StoreInfo, parse};
+use super::{Store, parse, search_url};
 use crate::domain::ScrapedOffer;
-
-/// Like [`super::Store`], implementations only build a URL and read a document.
-pub trait LiveStore: StoreInfo {
-    /// A query that should always return results, used by the daily health check.
-    fn probe(&self) -> &'static str;
-    /// The store's search results page for `query`.
-    fn search_url(&self, query: &str) -> Option<Url>;
-    /// Extracts the offers from a search results page.
-    fn parse_results(&self, body: &str, url: &Url) -> Vec<ScrapedOffer>;
-}
-
-/// Builds a search URL from a template whose `{}` stands for the query.
-pub fn search_url(template: &str, query: &str) -> Option<Url> {
-    let encoded: String = url::form_urlencoded::byte_serialize(query.as_bytes()).collect();
-    Url::parse(&template.replace("{}", &encoded)).ok()
-}
 
 /// A store whose search results are plain HTML cards, described entirely by CSS
 /// selectors. Adding such a store is a registry entry, not code.
@@ -43,7 +26,7 @@ pub struct CssSearch {
     pub image: Option<(&'static str, &'static str)>,
 }
 
-impl StoreInfo for CssSearch {
+impl Store for CssSearch {
     fn id(&self) -> &'static str {
         self.id
     }
@@ -55,9 +38,7 @@ impl StoreInfo for CssSearch {
     fn home(&self) -> &'static str {
         self.home
     }
-}
 
-impl LiveStore for CssSearch {
     fn probe(&self) -> &'static str {
         self.probe
     }

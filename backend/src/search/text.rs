@@ -1,4 +1,5 @@
-//! Text normalisation shared by indexing and querying, so both sides tokenise identically.
+//! How search text and product titles are compared: both are normalised the same way,
+//! then every typed word must appear in the title.
 
 use deunicode::deunicode;
 
@@ -31,7 +32,7 @@ const SYNONYMS: [&[&str]; 4] = [
     &["telefon", "telefoane", "smartphone"],
 ];
 
-/// A user's search text, understood the same way for the index and for live results.
+/// A user's search text.
 #[derive(Debug, PartialEq)]
 pub struct TextQuery {
     terms: Vec<Term>,
@@ -72,18 +73,9 @@ impl TextQuery {
         self.terms.iter().map(|term| term.word.as_str()).collect::<Vec<_>>().join(" ")
     }
 
-    /// A `to_tsquery('simple', …)` expression requiring every word.
-    pub fn expression(&self) -> String {
-        let terms = self.terms.iter().map(|term| {
-            let suffix = if term.prefix { ":*" } else { "" };
-            let words: Vec<String> = term.words().map(|word| format!("{word}{suffix}")).collect();
-            if words.len() == 1 { words.concat() } else { format!("({})", words.join(" | ")) }
-        });
-        terms.collect::<Vec<_>>().join(" & ")
-    }
-
-    /// Whether a title (already passed through [`normalize`]) contains every word:
-    /// the same rule the index applies through [`TextQuery::expression`].
+    /// Whether a title (already passed through [`normalize`]) contains every word.
+    /// The last word may be the start of one, so results appear while typing, and a
+    /// word with synonyms matches any of them.
     pub fn matches(&self, normalized_title: &str) -> bool {
         let title: Vec<&str> = normalized_title.split(' ').collect();
         self.terms.iter().all(|term| {
@@ -116,25 +108,18 @@ mod tests {
     }
 
     #[test]
-    fn requires_every_word_with_a_prefix_on_the_last() {
-        assert_eq!(query("iPhone 15 pro").expression(), "iphone & 15 & pro:*");
-        assert_eq!(query("iphone 1").expression(), "iphone & 1");
+    fn counts_and_normalizes_words() {
         assert_eq!((query("iPhone 15 pro").words(), query("iPhone 15 pro").normalized()), (3, "iphone 15 pro".into()));
         assert_eq!(TextQuery::parse(" ,, "), None);
     }
 
     #[test]
-    fn expands_synonyms() {
-        assert_eq!(query("PS5").expression(), "(ps | playstation) & 5");
-        assert_eq!(query("samsung tv").expression(), "samsung & (tv:* | televizor:* | televizoare:*)");
-    }
-
-    #[test]
-    fn matches_titles_like_the_index_does() {
+    fn requires_every_word_with_a_prefix_on_the_last_and_synonyms() {
         let matches = |text: &str, title: &str| query(text).matches(&normalize(title));
         assert!(matches("ps5", "Consolă Sony PlayStation 5 Slim"));
         assert!(matches("iphone 15 pr", "Apple iPhone 15 Pro 256GB"));
         assert!(!matches("iphone 1", "Apple iPhone 15 Pro"));
         assert!(!matches("iphone 15 pro", "Husă Samsung Galaxy S24"));
+        assert!(matches("samsung tv", "Televizor Samsung QLED 55"));
     }
 }

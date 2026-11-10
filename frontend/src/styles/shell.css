@@ -14,10 +14,6 @@
   backdrop-filter: saturate(180%) blur(20px);
 }
 
-.navbar__end {
-  margin-left: auto;
-}
-
 .wordmark {
   flex: none;
   padding: 0.2rem 0.55rem 0.3rem;
@@ -28,47 +24,6 @@
   font-weight: 800;
   line-height: 1.1;
   letter-spacing: -0.03em;
-}
-
-/* A borderless bar control: back, share. */
-.bar-button {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.1rem;
-  min-width: 2.75rem;
-  min-height: 2.75rem;
-  padding: 0 0.5rem;
-  border: 0;
-  border-radius: 999px;
-  background: none;
-  color: var(--tint);
-  font-size: 1.0625rem;
-  transition:
-    opacity var(--quick) var(--spring),
-    background var(--quick) var(--spring);
-}
-
-.bar-button .icon {
-  font-size: 1.3rem;
-}
-
-.bar-button:active {
-  opacity: 0.5;
-}
-
-@media (hover: hover) {
-  .bar-button:hover {
-    background: var(--fill);
-  }
-}
-
-.activity {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  color: var(--label-2);
-  font-size: 0.9375rem;
-  font-variant-numeric: tabular-nums;
 }
 
 /* Search field */

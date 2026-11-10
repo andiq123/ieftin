@@ -1,10 +1,5 @@
 #!/usr/bin/env bash
-# Runs the whole stack: database -> backend (applies migrations) -> frontend.
-# Ctrl+C stops everything and removes the database container; data is kept
-# in a Docker volume, so the next start resumes with the same index.
-#
-#   ./start.sh           start, keeping the index
-#   ./start.sh --fresh   delete the index first and rebuild it from scratch
+# Runs the whole app for development: backend, then frontend. Ctrl+C stops both.
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -13,12 +8,7 @@ readonly BACKEND_BIN=$ROOT/backend/target/release/ieftin-backend
 readonly VITE_BIN=$ROOT/frontend/node_modules/vite/bin/vite.js
 readonly PID_FILE=$ROOT/.start.pid
 
-fresh=false
-case "${1:-}" in
-  '') ;;
-  --fresh) fresh=true ;;
-  *) echo "Usage: $0 [--fresh]" >&2; exit 2 ;;
-esac
+[[ $# -eq 0 ]] || { echo "Usage: $0" >&2; exit 2; }
 
 step() { printf '\n\033[1m▸ %s\033[0m\n' "$1"; }
 fail() { echo "$1" >&2; exit 1; }
@@ -26,10 +16,9 @@ fail() { echo "$1" >&2; exit 1; }
 # --- Prerequisites ----------------------------------------------------------
 # rustup installs cargo here; not every shell profile puts it on PATH.
 [[ -f "$HOME/.cargo/env" ]] && source "$HOME/.cargo/env"
-for tool in docker cargo npm curl; do
+for tool in cargo npm curl; do
   command -v "$tool" >/dev/null || fail "$tool is required."
 done
-docker info >/dev/null 2>&1 || fail 'Docker is not running. Start Docker and try again.'
 
 # Each side has its own settings file, created from its example on first run.
 for side in backend frontend; do
@@ -37,10 +26,10 @@ for side in backend frontend; do
 done
 set -a; source backend/.env; source frontend/.env; set +a
 
-# Everything else follows from those two files, so nothing is configured twice.
+# The dev server forwards /api to wherever the backend listens, so the two
+# cannot drift apart.
 : "${BIND_ADDR:=127.0.0.1:${PORT:-8090}}" "${FRONTEND_PORT:=5180}"
-[[ $DATABASE_URL =~ @[^:/]+:([0-9]+)/ ]] || fail 'DATABASE_URL in backend/.env must name a port, e.g. …@127.0.0.1:5544/ieftin'
-export BIND_ADDR FRONTEND_PORT POSTGRES_PORT=${BASH_REMATCH[1]} BACKEND_URL=http://$BIND_ADDR
+export BIND_ADDR FRONTEND_PORT BACKEND_URL=http://$BIND_ADDR
 
 # --- Process management -----------------------------------------------------
 pids=()
@@ -57,7 +46,6 @@ cleanup() {
   trap - EXIT INT TERM HUP
   step 'Stopping'
   stop_services
-  docker compose down --remove-orphans
   rm -f "$PID_FILE"
   echo 'Everything stopped.'
 }
@@ -74,13 +62,7 @@ if [[ -f $PID_FILE ]] && previous=$(<"$PID_FILE") && kill -0 "$previous" 2>/dev/
 fi
 echo $$ >"$PID_FILE"
 stop_services
-if $fresh; then
-  echo 'Deleting the index (--fresh).'
-  docker compose down --remove-orphans --volumes
-else
-  docker compose down --remove-orphans
-fi
-for port in "${BIND_ADDR##*:}" "$FRONTEND_PORT" "$POSTGRES_PORT"; do
+for port in "${BIND_ADDR##*:}" "$FRONTEND_PORT"; do
   port_is_free "$port" || fail "Port $port is in use by another program. Free it or change it in backend/.env or frontend/.env."
 done
 
@@ -88,9 +70,6 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 trap 'exit 129' HUP # the terminal was closed
-
-step 'Database'
-docker compose up -d --wait db
 
 step 'Backend'
 (cd backend && cargo build --release)

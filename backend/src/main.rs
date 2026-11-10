@@ -1,21 +1,19 @@
 mod api;
 mod config;
-mod crawler;
 mod domain;
 mod error;
+mod fetch;
+mod health;
 mod live;
-mod repo;
 mod search;
 mod stores;
 
 use std::{net::SocketAddr, sync::Arc};
 
-use anyhow::Context;
-use sqlx::postgres::PgPoolOptions;
 use tokio::net::TcpListener;
 use tracing_subscriber::EnvFilter;
 
-use crate::{config::Config, live::LiveSearch};
+use crate::{config::Config, health::Health, live::LiveSearch};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -25,26 +23,13 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let config = Config::from_env()?;
-    let pool = PgPoolOptions::new()
-        .max_connections(10)
-        .connect(&config.database_url)
-        .await
-        .context("connecting to the database")?;
-    sqlx::migrate!().run(&pool).await.context("running migrations")?;
-
-    let registry = stores::registry();
-    repo::sync_stores(&pool, &registry).await?;
-    let monitor = crawler::Monitor::default();
-    let live = Arc::new(LiveSearch::new(registry.live, config.crawl.delay)?);
-    if config.crawl.enabled {
-        crawler::spawn(pool.clone(), registry.indexed, &config.crawl, &monitor)?;
-        crawler::spawn_live_checks(pool.clone(), live.clone(), &monitor);
-    }
+    let live = Arc::new(LiveSearch::new(stores::all())?);
+    let health = Health::default();
+    health::spawn_checks(live.clone(), &health);
 
     let listener = TcpListener::bind(config.bind_addr).await?;
     tracing::info!("listening on http://{}", config.bind_addr);
-    let state = api::AppState { pool, monitor, live, crawl_interval: config.crawl.interval };
-    let app = api::router(state, config.cors_origins);
+    let app = api::router(api::AppState { live, health }, config.cors_origins);
     // The search rate limit needs each connection's address.
     axum::serve(listener, app.into_make_service_with_connect_info::<SocketAddr>())
         .with_graceful_shutdown(shutdown_requested())

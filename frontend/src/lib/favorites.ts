@@ -1,9 +1,8 @@
 import { useSyncExternalStore } from 'react'
 import type { Offer } from '../api/types.ts'
-import { type OfferKey, offerPath } from './routes.ts'
 
-/** An offer the user saved, as it was at that moment: its price then is what
- *  later prices are compared with. Kept in this browser only; no account. */
+/** An offer the user saved, as it was at that moment. Kept in this browser only;
+ *  no account. */
 export interface Favorite {
   offer: Offer
   savedAt: number
@@ -11,6 +10,9 @@ export interface Favorite {
 
 const STORAGE_KEY = 'ieftin.favorites'
 const MAX_FAVORITES = 200
+
+/** What makes two offers the same one. */
+const keyOf = (offer: Pick<Offer, 'store_id' | 'external_id'>) => `${offer.store_id}\n${offer.external_id}`
 
 const listeners = new Set<() => void>()
 let cached: Favorite[] | undefined
@@ -57,14 +59,14 @@ export function useFavorites(): Favorite[] {
 
 /** Whether an offer is saved, as a lookup built once per list. */
 export function savedLookup(favorites: Favorite[]) {
-  const keys = new Set(favorites.map((favorite) => offerPath(favorite.offer)))
-  return (offer: OfferKey) => keys.has(offerPath(offer))
+  const keys = new Set(favorites.map((favorite) => keyOf(favorite.offer)))
+  return (offer: Offer) => keys.has(keyOf(offer))
 }
 
 /** Saves an offer, or removes it when it is already saved. */
 export function toggleFavorite(offer: Offer) {
-  const key = offerPath(offer)
-  const others = read().filter((favorite) => offerPath(favorite.offer) !== key)
+  const key = keyOf(offer)
+  const others = read().filter((favorite) => keyOf(favorite.offer) !== key)
   const removing = others.length < read().length
   write(removing ? others : [{ offer, savedAt: Date.now() }, ...others].slice(0, MAX_FAVORITES))
 }
