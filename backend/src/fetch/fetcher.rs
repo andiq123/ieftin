@@ -37,6 +37,12 @@ impl Fetcher {
         Ok(Self { client, pause, next_slot: Mutex::new(Instant::now()), robots: Mutex::default() })
     }
 
+    /// Reads the robots.txt of the URL's host if that has not happened yet, so the
+    /// first real request to a store is not slowed down by it.
+    pub async fn prepare(&self, url: &Url) {
+        self.robots_for(url).await;
+    }
+
     /// Fetches a page as text.
     pub async fn get(&self, url: &Url) -> Result<String, FetchError> {
         let robots = self.robots_for(url).await;

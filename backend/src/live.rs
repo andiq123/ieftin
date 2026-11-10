@@ -20,6 +20,9 @@ use crate::{
 /// the slowest store worth having (Prime PC needs about six seconds); every search
 /// is as slow as its slowest store, so this is also the longest a search can take.
 const TIMEOUT: Duration = Duration::from_secs(8);
+/// A health test may take longer: nobody is waiting, and what it answers is whether
+/// the store works at all. Slowness shows in each search instead.
+const PROBE_TIMEOUT: Duration = Duration::from_secs(20);
 /// Minimum time between two requests to the same store.
 const PAUSE: Duration = Duration::from_millis(300);
 /// How long a store's answer to a query is reused. Prices rarely move within minutes.
@@ -34,7 +37,7 @@ type Cache = HashMap<(&'static str, String), (Instant, Offers)>;
 pub enum LiveError {
     #[error(transparent)]
     Fetch(#[from] FetchError),
-    #[error("no answer within {} seconds", TIMEOUT.as_secs())]
+    #[error("no answer in time")]
     Timeout,
     #[error("query cannot be sent to this store")]
     Query,
@@ -92,7 +95,7 @@ impl LiveSearch {
     /// Runs a store's test query, bypassing the cache; used by the health check.
     pub async fn probe(&self, store_id: &str) -> Result<usize, LiveError> {
         let source = self.sources.iter().find(|source| source.store.id() == store_id).ok_or(LiveError::Query)?;
-        Ok(fetch(source, source.store.probe()).await?.len())
+        Ok(fetch(source, source.store.probe(), PROBE_TIMEOUT).await?.len())
     }
 
     async fn cached(&self, source: &Source, query: &str, key: &str) -> Result<Offers, LiveError> {
@@ -102,7 +105,7 @@ impl LiveSearch {
         {
             return Ok(offers.clone());
         }
-        let offers = fetch(source, query).await?;
+        let offers = fetch(source, query, TIMEOUT).await?;
         let mut cache = self.lock();
         if cache.len() >= CACHE_CAPACITY {
             cache.retain(|_, (stored, _)| stored.elapsed() < CACHE_TTL);
@@ -120,8 +123,10 @@ impl LiveSearch {
     }
 }
 
-async fn fetch(source: &Source, query: &str) -> Result<Offers, LiveError> {
+async fn fetch(source: &Source, query: &str, limit: Duration) -> Result<Offers, LiveError> {
     let url = source.store.search_url(query).ok_or(LiveError::Query)?;
-    let body = tokio::time::timeout(TIMEOUT, source.fetcher.get(&url)).await.map_err(|_| LiveError::Timeout)??;
+    // The store's rules are read once, outside the time allowed for its answer.
+    source.fetcher.prepare(&url).await;
+    let body = tokio::time::timeout(limit, source.fetcher.get(&url)).await.map_err(|_| LiveError::Timeout)??;
     Ok(source.store.parse_results(&body, &url).into())
 }
