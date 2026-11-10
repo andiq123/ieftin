@@ -31,7 +31,10 @@ export interface SearchResults {
   offers: Offer[]
   stores: Facet[]
   categories: Facet[]
-  accessory_floor_bani: number | null
+  /** Matches that are accessories (cases, cables, games…) rather than the product. */
+  accessories_total: number
+  /** How many of those this answer leaves out; none when only accessories matched. */
+  accessories_hidden: number
   sources: SourceReport[]
 }
 

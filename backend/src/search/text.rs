@@ -32,6 +32,55 @@ const SYNONYMS: [&[&str]; 4] = [
     &["telefon", "telefoane", "smartphone"],
 ];
 
+/// Things sold *for* a product rather than the product itself. A listing that names
+/// one of these is an accessory, wherever the word stands in its title.
+const ACCESSORY_WORDS: [&str; 34] = [
+    "husa",
+    "huse",
+    "case",
+    "cases",
+    "cover",
+    "carcasa",
+    "bumper",
+    "toc",
+    "sticla",
+    "sticle",
+    "folie",
+    "folii",
+    "protector",
+    "protectie",
+    "glass",
+    "cablu",
+    "cabluri",
+    "cable",
+    "incarcator",
+    "charger",
+    "adaptor",
+    "adapter",
+    "alimentator",
+    "suport",
+    "holder",
+    "curea",
+    "strap",
+    "bratara",
+    "geanta",
+    "rucsac",
+    "stylus",
+    "skin",
+    "sticker",
+    "stickere",
+];
+/// Words that mark an accessory only when a title opens with them: "Joc PS5 …" is a
+/// game, while "PlayStation 5 + joc" is a console sold with one.
+const ACCESSORY_LEADS: [&str; 4] = ["joc", "jocuri", "game", "games"];
+
+/// Whether a title (already passed through [`normalize`]) names an accessory.
+pub fn names_accessory(normalized_title: &str) -> bool {
+    let mut words = normalized_title.split(' ');
+    words.next().is_some_and(|first| ACCESSORY_LEADS.contains(&first) || ACCESSORY_WORDS.contains(&first))
+        || words.any(|word| ACCESSORY_WORDS.contains(&word))
+}
+
 /// A user's search text.
 #[derive(Debug, PartialEq)]
 pub struct TextQuery {
@@ -66,6 +115,14 @@ impl TextQuery {
     /// Number of words typed; one-word queries are too broad to guess intent from.
     pub fn words(&self) -> usize {
         self.terms.len()
+    }
+
+    /// Whether the user asked for an accessory ("husa iphone 15"): then accessories
+    /// are the product, and nothing should be set aside.
+    pub fn wants_accessory(&self) -> bool {
+        self.terms
+            .iter()
+            .any(|term| ACCESSORY_WORDS.contains(&term.word.as_str()) || ACCESSORY_LEADS.contains(&term.word.as_str()))
     }
 
     /// The normalised text, e.g. as a cache key.
@@ -105,6 +162,21 @@ mod tests {
     fn normalizes_diacritics_case_and_boundaries() {
         assert_eq!(normalize("Husă iPhone 15 Pro, 256GB"), "husa iphone 15 pro 256 gb");
         assert_eq!(normalize("Galaxy S24+"), "galaxy s 24");
+    }
+
+    #[test]
+    fn tells_accessories_from_products() {
+        let accessory = |title: &str| names_accessory(&normalize(title));
+        assert!(accessory("Husă pentru smartphone Apple iPhone 15 Pro Max (Nature Pro) White"));
+        assert!(accessory("Original iPhone 15 Pro Silicone Case Black"));
+        assert!(accessory("Sticla de pro tectie HELMET DIAMOND 5D IPHONE 15 PRO , BLACK"));
+        assert!(accessory("Joc PS5 EA Sports FC 25"));
+        assert!(!accessory("Telefon mobil iPhone 15 Pro 1TB Blue Titanium"));
+        assert!(!accessory("Consolă Sony PlayStation 5 Slim + joc EA FC 25"));
+        assert!(!accessory("Laptop gaming ASUS ROG Strix"));
+
+        assert!(query("husa iphone 15").wants_accessory());
+        assert!(!query("iphone 15 pro").wants_accessory());
     }
 
     #[test]

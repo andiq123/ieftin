@@ -4,7 +4,7 @@ use std::collections::{HashMap, HashSet};
 
 use serde::{Deserialize, Serialize};
 
-use super::TextQuery;
+use super::{TextQuery, names_accessory, normalize};
 use crate::domain::{Bani, Offer};
 
 const MAX_FACET_VALUES: usize = 24;
@@ -12,7 +12,6 @@ const MAX_FACET_VALUES: usize = 24;
 const ACCESSORY_RATIO: Bani = 3;
 /// How far below a product category's cheapest offer the floor is set.
 const CATEGORY_MARGIN_PERCENT: Bani = 80;
-const BANI_PER_LEU: Bani = 100;
 
 #[derive(Debug, Clone, Copy, Default, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -52,10 +51,12 @@ pub struct Results {
     /// always see (and switch to) the alternatives.
     pub stores: Vec<Facet>,
     pub categories: Vec<Facet>,
-    /// Price below which matches look like accessories or related items (cases,
-    /// games, cables…) rather than the product searched for. Offers under it are
-    /// left out unless asked for; `None` when there is no clear split.
-    pub accessory_floor_bani: Option<Bani>,
+    /// How many matches are accessories or related items (cases, games, cables…)
+    /// rather than the product searched for.
+    pub accessories_total: usize,
+    /// How many of those were left out of this answer. They stay in when asked for,
+    /// and when nothing but accessories matched: better those than an empty page.
+    pub accessories_hidden: usize,
 }
 
 pub fn assemble(mut offers: Vec<Offer>, text: &TextQuery, filters: &Filters) -> Results {
@@ -63,23 +64,26 @@ pub fn assemble(mut offers: Vec<Offer>, text: &TextQuery, filters: &Filters) -> 
     let mut seen = HashSet::new();
     offers.retain(|offer| seen.insert(offer.url.clone()));
 
+    // An explicit category or minimum price already says what the user wants, and so
+    // does asking for an accessory by name.
+    let judge = filters.category.is_none() && filters.min_price.is_none() && !text.wants_accessory();
+    let accessory = if judge { accessories(&offers, text.words()) } else { vec![false; offers.len()] };
+    let accessories_total = accessory.iter().filter(|is| **is).count();
+    let hide = !filters.include_accessories && accessories_total < offers.len();
+    let accessories_hidden = if hide { accessories_total } else { 0 };
+    if hide {
+        let mut keep = accessory.iter().map(|is| !is);
+        offers.retain(|_| keep.next().unwrap_or(true));
+    }
+
+    // Facets describe what is on offer for this search, before the user's own filters.
     let stores = facets(&offers, |offer| Some(&offer.store_id));
     let categories = facets(&offers, |offer| offer.category.as_ref());
-
-    // An explicit category or minimum price already says what the user wants.
-    let accessory_floor_bani = match (&filters.category, filters.min_price) {
-        (None, None) => accessory_floor(&offers, text.words()),
-        _ => None,
-    };
-    let min_price = match accessory_floor_bani {
-        Some(floor) if !filters.include_accessories => Some(floor),
-        _ => filters.min_price,
-    };
 
     offers.retain(|offer| {
         filters.store.as_ref().is_none_or(|store| &offer.store_id == store)
             && filters.category.as_ref().is_none_or(|category| offer.category.as_ref() == Some(category))
-            && min_price.is_none_or(|min| offer.price_bani >= min)
+            && filters.min_price.is_none_or(|min| offer.price_bani >= min)
             && filters.max_price.is_none_or(|max| offer.price_bani <= max)
             && !(filters.in_stock_only && offer.in_stock == Some(false))
     });
@@ -93,7 +97,8 @@ pub fn assemble(mut offers: Vec<Offer>, text: &TextQuery, filters: &Filters) -> 
         offers: offers.into_iter().skip(filters.offset).take(filters.limit).collect(),
         stores,
         categories,
-        accessory_floor_bani,
+        accessories_total,
+        accessories_hidden,
     }
 }
 
@@ -113,6 +118,24 @@ fn facets<'a>(offers: &'a [Offer], key: impl Fn(&'a Offer) -> Option<&'a String>
     facets.sort_by(|a, b| b.count.cmp(&a.count).then_with(|| a.key.cmp(&b.key)));
     facets.truncate(MAX_FACET_VALUES);
     facets
+}
+
+/// Marks each offer that is an accessory rather than the product searched for.
+///
+/// What a listing calls itself decides first: a "husă" or a "case" is an accessory
+/// whatever it costs. Prices then catch what names do not (a controller, a game
+/// with no telling word): among the remaining offers, those below the point where
+/// the product's own prices start.
+fn accessories(offers: &[Offer], words: usize) -> Vec<bool> {
+    let named: Vec<bool> = offers.iter().map(|offer| names_accessory(&normalize(&offer.title))).collect();
+    let products: Vec<Offer> =
+        offers.iter().zip(&named).filter(|(_, named)| !**named).map(|(o, _)| o.clone()).collect();
+    let floor = accessory_floor(&products, words);
+    offers
+        .iter()
+        .zip(named)
+        .map(|(offer, named)| named || floor.is_some_and(|floor| offer.price_bani < floor))
+        .collect()
 }
 
 /// Where the searched product's prices start, judged two ways. Categories are the
@@ -149,8 +172,7 @@ fn category_floor(offers: &[Offer]) -> Option<Bani> {
         prices.sort_unstable();
         (prices.len() >= significant && median(&prices) >= typical * ACCESSORY_RATIO).then(|| prices[0])
     });
-    // Rounded down to whole lei, since the floor is shown to the user.
-    cheapest.min().map(|price| price * CATEGORY_MARGIN_PERCENT / 100 / BANI_PER_LEU * BANI_PER_LEU)
+    cheapest.min().map(|price| price * CATEGORY_MARGIN_PERCENT / 100)
 }
 
 /// Without categories: searching "iphone 15 pro" matches 200-lei cases and
@@ -193,12 +215,42 @@ mod tests {
     }
 
     #[test]
-    fn hides_accessories_below_a_price_gap() {
-        let mut offers: Vec<_> = (0..6).map(|i| offer("a", "case", 150 + i * 20, None)).collect();
-        offers.extend((0..4).map(|i| offer("b", "phone", 17_000 + i * 500, None)));
+    fn sets_accessories_aside_by_name() {
+        // Ninety cases and two phones, with a mispriced case above them all.
+        let mut offers: Vec<_> =
+            (0..90).map(|i| offer("a", &format!("Husa iPhone 15 Pro {i}"), 150 + i * 15, None)).collect();
+        offers.push(offer("a", "Husa FineWoven iPhone 15 Pro", 899_555, None));
+        offers.push(offer("b", "iPhone 15 Pro 1TB Blue Titanium", 25_499, None));
+        offers.push(offer("c", "Telefon mobil iPhone 15 Pro 1TB", 25_999, None));
+
+        let found = results(offers.clone(), "iphone 15 pro", Filters::default());
+        assert_eq!((found.total, found.accessories_total, found.accessories_hidden), (2, 91, 91));
+        assert_eq!(found.offers[0].price_bani, 2_549_900);
+        // The stores offered are those that sell the phone.
+        assert_eq!(found.stores.iter().map(|facet| facet.key.as_str()).collect::<Vec<_>>(), ["b", "c"]);
+
+        let all = results(offers.clone(), "iphone 15 pro", Filters { include_accessories: true, ..Filters::default() });
+        assert_eq!((all.total, all.accessories_total, all.accessories_hidden), (93, 91, 0));
+
+        // Asking for the accessory makes it the product: nothing is set aside.
+        let cases = results(offers, "husa iphone 15 pro", Filters::default());
+        assert_eq!((cases.total, cases.accessories_total), (93, 0));
+    }
+
+    #[test]
+    fn shows_accessories_when_nothing_else_matched() {
+        let offers: Vec<_> = (0..5).map(|i| offer("a", &format!("Husa iPhone 12 {i}"), 100 + i, None)).collect();
+        let found = results(offers, "iphone 12", Filters::default());
+        assert_eq!((found.total, found.accessories_total, found.accessories_hidden), (5, 5, 0));
+    }
+
+    #[test]
+    fn hides_unnamed_accessories_below_a_price_gap() {
+        let mut offers: Vec<_> = (0..6).map(|i| offer("a", &format!("pad {i}"), 150 + i * 20, None)).collect();
+        offers.extend((0..4).map(|i| offer("b", &format!("phone {i}"), 17_000 + i * 500, None)));
 
         let hidden = results(offers.clone(), "iphone 15 pro", Filters::default());
-        assert_eq!((hidden.accessory_floor_bani, hidden.total), (Some(1_700_000), 4));
+        assert_eq!((hidden.accessories_hidden, hidden.total), (6, 4));
         assert_eq!(hidden.offers[0].price_bani, 1_700_000);
 
         let shown = results(offers, "iphone 15 pro", Filters { include_accessories: true, ..Filters::default() });
@@ -207,16 +259,17 @@ mod tests {
 
     #[test]
     fn uses_categories_when_prices_have_no_gap() {
-        // Games, controllers and consoles form a continuous range of prices.
-        let mut offers: Vec<_> = (0..40).map(|i| offer("a", "game", 200 + i * 60, Some("Jocuri"))).collect();
-        offers.extend((0..6).map(|i| offer("a", "pad", 1_500 + i * 500, Some("Accesorii"))));
-        offers.extend((0..5).map(|i| offer("a", "console", 9_500 + i * 1_500, Some("Console"))));
+        // Unnamed extras, controllers and consoles form a continuous range of prices.
+        let mut offers: Vec<_> =
+            (0..40).map(|i| offer("a", &format!("disc {i}"), 200 + i * 60, Some("Jocuri"))).collect();
+        offers.extend((0..6).map(|i| offer("a", &format!("pad {i}"), 1_500 + i * 500, Some("Accesorii"))));
+        offers.extend((0..5).map(|i| offer("a", &format!("console {i}"), 9_500 + i * 1_500, Some("Console"))));
         offers.push(offer("b", "console elsewhere", 9_900, None));
 
         let found = results(offers.clone(), "playstation 5", Filters::default());
-        assert_eq!((found.accessory_floor_bani, found.total), (Some(760_000), 6));
+        assert_eq!((found.accessories_hidden, found.total), (46, 6));
         // One word is too vague to single out a product.
-        assert_eq!(results(offers, "playstation", Filters::default()).accessory_floor_bani, None);
+        assert_eq!(results(offers, "playstation", Filters::default()).accessories_hidden, 0);
     }
 
     #[test]

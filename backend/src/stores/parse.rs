@@ -25,6 +25,13 @@ pub fn text_of(scope: ElementRef, selector: &scraper::Selector) -> Option<String
     scope.select(selector).next().map(text).filter(|text| !text.is_empty())
 }
 
+/// The price an element shows. Some stores nest the crossed-out old price inside it,
+/// so the element's own text counts first and its children only when it has none.
+pub fn price_in(element: ElementRef) -> Option<Bani> {
+    let own: String = element.children().filter_map(|node| node.value().as_text().map(|text| &**text)).collect();
+    price(&own).or_else(|| price(&text(element)))
+}
+
 /// Resolves an element's URL attribute against the page it was found on.
 pub fn link(element: ElementRef, attribute: &str, page: &Url) -> Option<Url> {
     page.join(element.attr(attribute)?.trim()).ok()

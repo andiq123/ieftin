@@ -29,10 +29,12 @@ search ──▶ every working store's own search page, asked now ──▶ one 
   `256GB`/`256 GB` differences are ignored, and common synonyms are expanded (`ps5`
   finds "PlayStation 5"). Stores' own searches are fuzzier, so this is applied to
   what they return.
-- **Accessory floor** – "playstation 5" matches consoles and many games; sorted by
-  price, the console would be buried. The backend finds where the product's prices
-  start (from categories when offers have them, otherwise the widest gap in the
-  prices) and hides what is below by default; the UI says so and offers "show all".
+- **Product first** – "iphone 15 pro" matches two phones and a hundred cases; sorted
+  by price, the phones would be buried. Listings that name an accessory (husă, case,
+  sticlă, cablu…) are set aside, and so is whatever is priced far below where the
+  product's own prices start. The page says how many were hidden and offers "show
+  all". Accessories are shown anyway when nothing else matched, and are the product
+  when the search asks for one ("husa iphone 15").
 - **Health check** – each store is tested with a known query when the server starts
   and every six hours after. One that fails is left out of searches and retried
   every half hour. The *Stores* page shows each store's state. Nothing is stored: a

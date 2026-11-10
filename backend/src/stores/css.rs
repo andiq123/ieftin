@@ -56,7 +56,7 @@ impl Store for CssSearch {
 impl CssSearch {
     fn offer(&self, card: ElementRef, page: &Url) -> Option<ScrapedOffer> {
         let first = |css: &str| Selector::parse(css).ok().and_then(|selector| card.select(&selector).next());
-        let price_of = |css: &str| first(css).map(parse::text).as_deref().and_then(parse::price);
+        let price_of = |css: &str| first(css).and_then(parse::price_in);
         let link = first(self.link)?;
         let url = parse::link(link, "href", page)?;
 
@@ -101,10 +101,14 @@ mod tests {
     fn reads_cards() {
         let html = r#"<div class="card"><img src="/a.jpg"><a class="name" href="/p/1"> Galaxy  S24 </a>
             <span class="old">18.999 MDL</span><span class="price">17 499 lei</span></div>
-            <div class="card"><a class="name" href="/p/2">No price</a></div>"#;
+            <div class="card"><a class="name" href="/p/2">No price</a></div>
+            <div class="card"><a class="name" href="/p/3">Discounted</a>
+              <span class="price"><span class="old">899<i>LEI</i></span> 555 </span></div>"#;
         let offers = SHOP.parse_results(html, &Url::parse("https://shop.md/search?q=galaxy").unwrap());
-        let [offer] = offers.as_slice() else { panic!("expected one offer") };
+        let [offer, discounted] = offers.as_slice() else { panic!("expected two offers") };
         assert_eq!((offer.title.as_str(), offer.external_id.as_str()), ("Galaxy S24", "/p/1"));
+        // The old price nested inside the price element is not part of the price.
+        assert_eq!((discounted.price, discounted.old_price), (55_500, Some(89_900)));
         assert_eq!((offer.price, offer.old_price), (1_749_900, Some(1_899_900)));
         assert_eq!(offer.image_url.as_ref().unwrap().as_str(), "https://shop.md/a.jpg");
     }

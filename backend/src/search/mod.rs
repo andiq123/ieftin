@@ -5,5 +5,5 @@ mod text;
 
 pub use self::{
     engine::{Filters, Results, Sort, assemble},
-    text::{TextQuery, normalize},
+    text::{TextQuery, names_accessory, normalize},
 };

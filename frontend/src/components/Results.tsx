@@ -50,7 +50,9 @@ export function Results({ filters, updateFilters, stores }: Props) {
   const offers = search.data.pages.flatMap((page) => page.offers)
   const storeName = storeNamer(stores)
   const cheapestBani = filters.sort === 'price_asc' ? offers[0]?.price_bani : undefined
-  const floor = first.accessory_floor_bani
+  const { accessories_total: accessories, accessories_hidden: hidden } = first
+  // Nothing but accessories matched, so they are shown instead of an empty page.
+  const onlyAccessories = accessories > 0 && hidden === 0 && !filters.accessories
   // A new search is running while the previous results are still on screen.
   const changing = search.isPlaceholderData
 
@@ -66,18 +68,27 @@ export function Results({ filters, updateFilters, stores }: Props) {
           </h2>
           <div className="facts">
             <Sources reports={first.sources} storeName={storeName} />
-            {floor !== null && (
+            {onlyAccessories ? (
               <span className="fact">
-                <Icon name={filters.accessories ? 'eye' : 'eye-off'} />
-                {filters.accessories ? 'Accessories shown' : `Accessories under ${formatLei(floor)} lei hidden`}
-                <button
-                  className="button button--small"
-                  type="button"
-                  onClick={() => updateFilters({ accessories: !filters.accessories })}
-                >
-                  {filters.accessories ? 'Hide' : 'Show all'}
-                </button>
+                <Icon name="eye" />
+                Only accessories found for this search
               </span>
+            ) : (
+              accessories > 0 && (
+                <span className="fact">
+                  <Icon name={filters.accessories ? 'eye' : 'eye-off'} />
+                  {filters.accessories
+                    ? `${formatCount(accessories)} accessories shown`
+                    : `${formatCount(hidden)} ${hidden === 1 ? 'accessory' : 'accessories'} hidden`}
+                  <button
+                    className="button button--small"
+                    type="button"
+                    onClick={() => updateFilters({ accessories: !filters.accessories })}
+                  >
+                    {filters.accessories ? 'Hide' : 'Show all'}
+                  </button>
+                </span>
+              )
             )}
           </div>
         </div>
