@@ -1,0 +1,543 @@
+.filters {
+  display: grid;
+  gap: 0.5rem;
+}
+
+/* Each filter row stays on one line and scrolls sideways, edge to edge on a phone. */
+.filters__row {
+  display: flex;
+  gap: 0.5rem;
+  margin-inline: -1rem;
+  padding-inline: 1rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.filters__row > * {
+  flex: none;
+}
+
+/* While a new search runs, the previous results stay in place, dimmed and inert,
+   under a floating status pill; the new list then rises in. */
+.results__body {
+  display: grid;
+  gap: 1rem;
+  transform-origin: 50% 0;
+  transition:
+    opacity var(--medium) var(--spring),
+    filter var(--medium) var(--spring),
+    scale var(--medium) var(--spring);
+}
+
+.results__body > * {
+  min-width: 0;
+}
+
+.results__body--changing {
+  opacity: 0.4;
+  filter: blur(3px) saturate(0.6);
+  scale: 0.985;
+}
+
+/* Takes no room, so the pill floats over the results instead of pushing them down. */
+.searching {
+  position: sticky;
+  top: calc(var(--navbar-height) + 0.75rem);
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  height: 0;
+}
+
+.searching p {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 0.5rem;
+  height: 2.75rem;
+  padding: 0 1.1rem;
+  border-radius: 999px;
+  background: var(--material-raised);
+  box-shadow:
+    var(--shadow),
+    0 0 0 1px var(--separator);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  white-space: nowrap;
+  animation: rise var(--medium) var(--spring);
+  -webkit-backdrop-filter: saturate(180%) blur(30px);
+  backdrop-filter: saturate(180%) blur(30px);
+}
+
+.searching .icon {
+  color: var(--tint);
+}
+
+.results__summary {
+  display: grid;
+  gap: 0.35rem;
+  padding-inline: 0.25rem;
+}
+
+.results__summary h2 {
+  font-size: 1.375rem;
+  font-weight: 700;
+}
+
+.results__more {
+  justify-self: center;
+}
+
+/* Offers ------------------------------------------------------------------ */
+.offers {
+  --separator-inset: 5.25rem;
+}
+
+.offers--skeleton li {
+  height: 5.5rem;
+  background: linear-gradient(100deg, transparent 30%, var(--fill) 50%, transparent 70%) 0 0 / 250% 100%;
+  animation: shimmer 1.4s linear infinite;
+}
+
+.offer {
+  display: grid;
+  grid-template-columns: 3.5rem minmax(0, 1fr) auto;
+  gap: 0.3rem 0.75rem;
+  padding: 0.75rem 0.5rem 0.75rem 1rem;
+  transition: background var(--quick) var(--spring);
+}
+
+.offer:has(.offer__title:active) {
+  background: var(--fill);
+}
+
+/* The price tag: tokens are re-inked so everything on it stays readable. */
+.offer--cheapest,
+.offer--cheapest:has(.offer__title:active) {
+  --label: var(--on-tag);
+  --label-2: rgb(28 28 30 / 0.75);
+  --fill: rgb(28 28 30 / 0.12);
+  --warn: #a1000f;
+  --tint: var(--on-tag);
+  background: var(--tag);
+  color: var(--on-tag);
+}
+
+.offer__rank {
+  display: none;
+  color: var(--label-2);
+  font-size: 0.9375rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.offer__image {
+  display: grid;
+  grid-row: span 2;
+  place-items: center;
+  width: 3.5rem;
+  height: 3.5rem;
+  overflow: hidden;
+  border-radius: 0.6rem;
+  background: #fff;
+}
+
+.offer__image img,
+.hero__image img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.offer__image .icon,
+.hero__image .icon {
+  color: #c7c7cc;
+  font-size: 1.5rem;
+}
+
+.offer__body,
+.offer__price {
+  grid-column: 2;
+}
+
+.offer__title {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+/* The whole row opens the store; the buttons sit above that. */
+.offer__title::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+/* History and save: stacked beside the text on a phone, in line on wide screens. */
+.offer__actions {
+  position: relative;
+  display: grid;
+  grid-area: 1 / 3 / span 2;
+  align-self: center;
+}
+
+.offer__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.6rem;
+  margin-top: 0.2rem;
+  color: var(--label-2);
+  font-size: 0.8125rem;
+}
+
+.offer__store {
+  color: var(--label);
+  font-weight: 600;
+}
+
+.offer__store .icon {
+  margin-left: 0.2rem;
+  color: var(--tint);
+  font-size: 0.85em;
+}
+
+/* A short fact about the offer, as a capsule: condition, grade, discount. */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.05rem 0.45rem;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--label);
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.offer__out {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  color: var(--warn);
+}
+
+.offer__price {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0 0.5rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.offer__price strong {
+  font-size: 1.25rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.offer__price small {
+  font-size: 0.65em;
+  font-weight: 600;
+}
+
+.offer__price .badge {
+  align-self: center;
+}
+
+.offer__price s,
+.offer__note {
+  color: var(--label-2);
+  font-size: 0.8125rem;
+}
+
+.offer__note {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  margin-left: auto;
+}
+
+.offer--cheapest .offer__note {
+  font-weight: 600;
+}
+
+@media (min-width: 40rem) {
+  .offers {
+    --separator-inset: 6.25rem;
+  }
+
+  .offer {
+    grid-template-columns: 4rem minmax(0, 1fr) auto auto;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.875rem 0.75rem 0.875rem 1.25rem;
+  }
+
+  /* A ranked list has a leading column for the position. */
+  .offers:has(.offer__rank) {
+    --separator-inset: 8.75rem;
+  }
+
+  .offer:has(.offer__rank) {
+    grid-template-columns: 1.5rem 4rem minmax(0, 1fr) auto auto;
+  }
+
+  .offer__actions {
+    grid-area: auto;
+    grid-auto-flow: column;
+  }
+
+  .offer__rank {
+    display: block;
+  }
+
+  .offer__image {
+    grid-row: auto;
+    width: 4rem;
+    height: 4rem;
+  }
+
+  .offer__body,
+  .offer__price {
+    grid-column: auto;
+  }
+
+  .offer__title {
+    font-size: 1rem;
+  }
+
+  .offer__price {
+    flex-direction: column;
+    align-items: flex-end;
+  }
+
+  .offer__price strong {
+    font-size: 1.375rem;
+  }
+
+  .offer__note {
+    margin-left: 0;
+  }
+}
+
+/* Saved */
+.saved .offers {
+  margin-top: 1rem;
+}
+
+/* Offer page -------------------------------------------------------------- */
+.offer-page {
+  display: grid;
+  gap: 1rem;
+}
+
+.offer-page__actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.5rem;
+}
+
+.offer-page__actions .button {
+  min-height: 3.125rem;
+}
+
+.offer-page > * {
+  min-width: 0;
+}
+
+.hero {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  gap: 1rem;
+  align-items: center;
+}
+
+.hero__image {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: #fff;
+}
+
+.hero h1 {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  margin-top: 0.15rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+}
+
+.hero .offer__price {
+  margin-top: 0.35rem;
+}
+
+.hero .offer__price strong {
+  font-size: 1.75rem;
+}
+
+.insight {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-weight: 600;
+}
+
+/* Price chart */
+.history {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.history__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.history__readout {
+  display: grid;
+  font-variant-numeric: tabular-nums;
+}
+
+.history__readout strong {
+  font-size: 1.375rem;
+  font-weight: 700;
+}
+
+.history__readout span {
+  color: var(--label-2);
+  font-size: 0.8125rem;
+}
+
+.chart {
+  position: relative;
+  height: 11rem;
+  cursor: crosshair;
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.chart svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  animation: reveal 900ms var(--spring);
+}
+
+@keyframes reveal {
+  from {
+    clip-path: inset(-1rem 100% -1rem 0);
+  }
+  to {
+    clip-path: inset(-1rem 0 -1rem 0);
+  }
+}
+
+.chart__line {
+  fill: none;
+  stroke: var(--tint);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.chart__area {
+  fill: url(#chart-fill);
+}
+
+.chart__fill-start {
+  stop-color: var(--tint);
+  stop-opacity: 0.22;
+}
+
+.chart__fill-end {
+  stop-color: var(--tint);
+  stop-opacity: 0;
+}
+
+.chart__grid {
+  stroke: var(--separator);
+  stroke-dasharray: 3 4;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Direct labels for the highest and lowest price: above the top grid line and
+   below the bottom one, where the line itself can never run. */
+.chart__label {
+  position: absolute;
+  left: 0;
+  color: var(--label-2);
+  font-size: 0.6875rem;
+  font-variant-numeric: tabular-nums;
+  translate: 0 calc(-100% - 2px);
+}
+
+.chart__label--below {
+  translate: 0 2px;
+}
+
+.chart__rule {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: var(--label-2);
+}
+
+.chart__dot {
+  position: absolute;
+  width: 0.75rem;
+  height: 0.75rem;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--tint);
+  translate: -50% -50%;
+}
+
+.chart__axis {
+  display: flex;
+  justify-content: space-between;
+  color: var(--label-2);
+  font-size: 0.6875rem;
+}
+
+.change {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (min-width: 40rem) {
+  .hero {
+    grid-template-columns: 9rem minmax(0, 1fr);
+    gap: 1.5rem;
+  }
+
+  .hero h1 {
+    font-size: 1.625rem;
+  }
+
+  .chart {
+    height: 14rem;
+  }
+}

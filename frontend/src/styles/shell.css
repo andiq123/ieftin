@@ -1,0 +1,208 @@
+/* Navigation bar: translucent, pinned under the status bar. */
+.navbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: var(--navbar-height);
+  padding: calc(env(safe-area-inset-top) + 0.5rem) var(--pad-right) 0.5rem var(--pad-left);
+  background: var(--material);
+  box-shadow: 0 1px 0 var(--separator);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+
+.navbar__end {
+  margin-left: auto;
+}
+
+.wordmark {
+  flex: none;
+  padding: 0.2rem 0.55rem 0.3rem;
+  border-radius: 0.5rem;
+  background: var(--tag);
+  color: var(--on-tag);
+  font-size: 1.25rem;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+}
+
+/* A borderless bar control: back, share. */
+.bar-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: none;
+  color: var(--tint);
+  font-size: 1.0625rem;
+  transition:
+    opacity var(--quick) var(--spring),
+    background var(--quick) var(--spring);
+}
+
+.bar-button .icon {
+  font-size: 1.3rem;
+}
+
+.bar-button:active {
+  opacity: 0.5;
+}
+
+@media (hover: hover) {
+  .bar-button:hover {
+    background: var(--fill);
+  }
+}
+
+.activity {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--label-2);
+  font-size: 0.9375rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Search field */
+.search {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+  height: 2.75rem;
+  padding: 0 0.25rem 0 0.7rem;
+  border-radius: 0.8rem;
+  background: var(--fill);
+  color: var(--label-2);
+  transition: box-shadow var(--quick) var(--spring);
+}
+
+.search:focus-within {
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tint) 35%, transparent);
+}
+
+.search input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--label);
+  outline: none;
+}
+
+.search input::placeholder {
+  color: var(--label-2);
+}
+
+.search button {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border: 0;
+  border-radius: 50%;
+  background: var(--tint);
+  color: var(--on-tint);
+  transition: scale var(--quick) var(--spring);
+}
+
+.search button:active {
+  scale: 0.9;
+}
+
+/* Page */
+.page {
+  padding: 1rem var(--pad-right) calc(env(safe-area-inset-bottom) + 7rem) var(--pad-left);
+}
+
+.large-title {
+  font-size: clamp(2.125rem, 1.7rem + 2vw, 2.75rem);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.022em;
+}
+
+.subtitle {
+  margin-top: 0.4rem;
+  color: var(--label-2);
+}
+
+.home {
+  display: grid;
+  gap: 1.5rem;
+  padding-top: 1rem;
+}
+
+/* Tab bar: a floating capsule above the home indicator. */
+.tabbar {
+  position: fixed;
+  bottom: calc(env(safe-area-inset-bottom) + 0.75rem);
+  left: 50%;
+  z-index: 10;
+  display: grid;
+  grid-template-columns: repeat(var(--count), 1fr);
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: var(--material-raised);
+  box-shadow:
+    var(--shadow),
+    0 0 0 1px var(--separator);
+  translate: -50% 0;
+  -webkit-backdrop-filter: saturate(180%) blur(30px);
+  backdrop-filter: saturate(180%) blur(30px);
+}
+
+.tabbar__tab {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 0.1rem;
+  min-width: 5.25rem;
+  padding: 0.4rem 0.75rem 0.3rem;
+  border-radius: 999px;
+  color: var(--label-2);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  transition: color var(--quick) var(--spring);
+}
+
+.tabbar__tab .icon {
+  font-size: 1.4rem;
+}
+
+.tabbar__tab[aria-current] {
+  color: var(--tint);
+}
+
+.tabbar__tab:active {
+  opacity: 0.6;
+}
+
+.tabbar__tab .pulse {
+  position: absolute;
+  top: 0.45rem;
+  left: calc(50% + 0.7rem);
+}
+
+/* The highlight behind the current tab; it slides when the tab changes. */
+.tabbar__thumb {
+  position: absolute;
+  inset: 0.25rem auto 0.25rem 0.25rem;
+  width: calc((100% - 0.5rem) / var(--count));
+  border-radius: 999px;
+  background: var(--fill);
+  translate: calc(var(--index) * 100%) 0;
+  transition: translate var(--quick) var(--spring);
+}

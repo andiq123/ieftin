@@ -1,0 +1,175 @@
+@keyframes spin {
+  to {
+    rotate: 1turn;
+  }
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--busy) 55%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 0 0.55rem transparent;
+  }
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    translate: 0 0.9rem;
+  }
+}
+
+@keyframes pop {
+  from {
+    opacity: 0;
+    scale: 0.5;
+  }
+}
+
+/* Children rise in one after another; anything past the tenth (such as rows
+   added by "show more") comes in without waiting. */
+.stagger > * {
+  animation: rise var(--slow) var(--spring) backwards;
+}
+
+.stagger > :nth-child(2) {
+  animation-delay: 45ms;
+}
+.stagger > :nth-child(3) {
+  animation-delay: 90ms;
+}
+.stagger > :nth-child(4) {
+  animation-delay: 135ms;
+}
+.stagger > :nth-child(5) {
+  animation-delay: 180ms;
+}
+.stagger > :nth-child(6) {
+  animation-delay: 225ms;
+}
+.stagger > :nth-child(7) {
+  animation-delay: 270ms;
+}
+.stagger > :nth-child(8) {
+  animation-delay: 315ms;
+}
+.stagger > :nth-child(9) {
+  animation-delay: 360ms;
+}
+.stagger > :nth-child(10) {
+  animation-delay: 405ms;
+}
+
+/* View transitions ---------------------------------------------------------
+   The bars keep their place while the page between them changes. */
+.navbar {
+  view-transition-name: navbar;
+}
+
+.tabbar {
+  view-transition-name: tabbar;
+}
+
+/* The tab bar is shown live, never as a fading snapshot, so the highlight
+   follows the finger instead of the page transition. */
+::view-transition-old(tabbar) {
+  display: none;
+}
+
+::view-transition-new(tabbar) {
+  animation: none;
+}
+
+::view-transition-group(*) {
+  animation-duration: var(--medium);
+  animation-timing-function: var(--spring);
+}
+
+:root:is([data-transition='page'], [data-transition='push'], [data-transition='pop']) .page {
+  view-transition-name: page;
+}
+
+/* Both pages are opaque, so they are layered rather than blended. */
+::view-transition-old(page),
+::view-transition-new(page) {
+  mix-blend-mode: normal;
+}
+
+/* Switching tabs: the old page sinks away, the new one rises in. */
+::view-transition-old(page) {
+  animation: page-out var(--quick) ease-in both;
+}
+
+::view-transition-new(page) {
+  animation: page-in var(--slow) var(--spring) 120ms both;
+}
+
+/* Opening a detail page pushes it in from the right; going back pulls it away. */
+:root[data-transition='push']::view-transition-old(page) {
+  animation: push-under var(--medium) var(--spring) both;
+}
+
+:root[data-transition='push']::view-transition-new(page) {
+  animation: push-over var(--medium) var(--spring) both;
+}
+
+:root[data-transition='pop']::view-transition-old(page) {
+  z-index: 1;
+  animation: push-over var(--medium) var(--spring) both reverse;
+}
+
+:root[data-transition='pop']::view-transition-new(page) {
+  animation: push-under var(--medium) var(--spring) both reverse;
+}
+
+@keyframes push-over {
+  from {
+    opacity: 0;
+    translate: min(100%, 24rem) 0;
+  }
+}
+
+@keyframes push-under {
+  to {
+    opacity: 0;
+    translate: max(-30%, -8rem) 0;
+  }
+}
+
+@keyframes page-out {
+  to {
+    opacity: 0;
+    scale: 0.97;
+  }
+}
+
+@keyframes page-in {
+  from {
+    opacity: 0;
+    translate: 0 1.5rem;
+  }
+}
+
+/* Reordering a list: each row glides to its new place. */
+:root[data-transition='reorder'] [style*='--vt'] {
+  view-transition-name: var(--vt);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after,
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation: none !important;
+    transition: none !important;
+  }
+}

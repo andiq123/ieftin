@@ -1,0 +1,340 @@
+.icon {
+  flex: none;
+  width: 1.15em;
+  height: 1.15em;
+  vertical-align: -0.2em;
+}
+
+.icon--spinner {
+  animation: spin 0.9s linear infinite;
+}
+
+/* A solid symbol: the "on" state of a toggle such as Save. */
+.icon--filled {
+  fill: currentColor;
+}
+
+/* A dot that breathes while background work is running. */
+.pulse {
+  display: inline-block;
+  flex: none;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--busy);
+  animation: pulse 1.6s ease-out infinite;
+}
+
+/* Status tones: set --tone once, use it for icons, glyphs and bar parts. */
+.tone--ok {
+  --tone: var(--ok);
+}
+.tone--busy {
+  --tone: var(--busy);
+}
+.tone--pending {
+  --tone: var(--pending);
+}
+.tone--no_data {
+  --tone: var(--no_data);
+}
+.tone--blocked {
+  --tone: var(--blocked);
+}
+.tone--unreachable {
+  --tone: var(--unreachable);
+}
+
+.tone {
+  color: var(--tone);
+}
+
+/* A status icon settles in whenever it appears or changes. */
+.tone:not(.icon--spinner) {
+  animation: pop var(--medium) var(--spring);
+}
+
+/* A settings-style icon: white symbol on a tinted rounded square. */
+.glyph {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 1.875rem;
+  height: 1.875rem;
+  border-radius: 0.45rem;
+  background: var(--tone, var(--pending));
+  color: #fff;
+  font-size: 1rem;
+  transition: background var(--medium) var(--spring);
+}
+
+/* Chips ------------------------------------------------------------------- */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  min-height: 2.375rem;
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.9375rem;
+  font-weight: 500;
+  white-space: nowrap;
+  transition:
+    background var(--quick) var(--spring),
+    color var(--quick) var(--spring),
+    scale var(--quick) var(--spring);
+}
+
+.chip:active {
+  scale: 0.95;
+}
+
+.chip[aria-pressed='true'] {
+  background: var(--tint);
+  color: var(--on-tint);
+}
+
+.chip > .icon {
+  opacity: 0.6;
+}
+
+.chip__meta {
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.65;
+}
+
+/* Segmented control ------------------------------------------------------- */
+.segmented {
+  position: relative;
+  display: inline-grid;
+  flex: none;
+  grid-template-columns: repeat(var(--count), minmax(0, 1fr));
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--fill);
+}
+
+.segmented__thumb {
+  position: absolute;
+  inset: 2px auto 2px 2px;
+  width: calc((100% - 4px) / var(--count));
+  border-radius: inherit;
+  background: var(--thumb);
+  box-shadow: 0 1px 4px rgb(0 0 0 / 0.14);
+  translate: calc(var(--index) * 100%) 0;
+  transition: translate var(--medium) var(--spring);
+}
+
+.segmented button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  min-height: 2.125rem;
+  padding: 0 0.75rem;
+  border: 0;
+  border-radius: inherit;
+  background: none;
+  color: var(--label-2);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: color var(--medium) var(--spring);
+}
+
+.segmented button[aria-pressed='true'] {
+  color: var(--label);
+}
+
+/* Buttons ----------------------------------------------------------------- */
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.75rem;
+  padding: 0 1.25rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--fill);
+  color: var(--tint);
+  font-weight: 600;
+  transition:
+    background var(--quick) var(--spring),
+    scale var(--quick) var(--spring);
+}
+
+.button:active:not(:disabled) {
+  background: var(--fill-pressed);
+  scale: 0.97;
+}
+
+.button:disabled {
+  cursor: progress;
+  opacity: 0.5;
+}
+
+.button--primary {
+  min-height: 3.125rem;
+  background: var(--tint);
+  color: var(--on-tint);
+}
+
+.button--primary:active:not(:disabled) {
+  background: color-mix(in srgb, var(--tint) 82%, #000);
+}
+
+.button--small {
+  min-height: 1.75rem;
+  padding: 0 0.65rem;
+  font-size: inherit;
+}
+
+/* A round, symbol-only control with a full-size touch target. */
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--tint);
+  font-size: 1.2rem;
+  transition:
+    background var(--quick) var(--spring),
+    scale var(--quick) var(--spring);
+}
+
+.icon-button:active {
+  background: var(--fill-pressed);
+  scale: 0.9;
+}
+
+@media (hover: hover) {
+  .icon-button:hover {
+    background: var(--fill);
+  }
+}
+
+/* Inset grouped list ------------------------------------------------------ */
+.list {
+  overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.list > li {
+  position: relative;
+}
+
+.list > li + li::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto var(--separator-inset, 1rem);
+  height: 1px;
+  background: var(--separator);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3rem;
+  padding: 0.5rem 1rem;
+  transition: background var(--quick) var(--spring);
+}
+
+.row__label {
+  flex: 1;
+  min-width: 0;
+}
+
+.row__value {
+  color: var(--label-2);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+.row > .icon--chevron {
+  color: var(--pending);
+  font-size: 0.9rem;
+}
+
+a.row:active {
+  background: var(--fill);
+}
+
+a.row:focus-visible {
+  outline-offset: -3px;
+}
+
+.card {
+  padding: 1rem;
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.section-title {
+  margin: 0 0 0.6rem 0.25rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+/* Compact icon-led statements --------------------------------------------- */
+.facts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem 1rem;
+  color: var(--label-2);
+  font-size: 0.8125rem;
+}
+
+.fact {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.fact--warn {
+  color: var(--warn);
+}
+
+/* Empty and error states -------------------------------------------------- */
+.notice {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
+  padding: 3.5rem 1rem;
+  color: var(--label-2);
+  text-align: center;
+  animation: rise var(--slow) var(--spring);
+}
+
+.notice > .icon {
+  font-size: 3rem;
+  stroke-width: 1.5;
+}
+
+.notice h2 {
+  color: var(--label);
+  font-size: 1.375rem;
+  font-weight: 700;
+}
+
+.notice .button {
+  margin-top: 0.75rem;
+}
