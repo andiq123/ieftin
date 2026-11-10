@@ -33,8 +33,10 @@ const SYNONYMS: [&[&str]; 4] = [
 ];
 
 /// Things sold *for* a product rather than the product itself. A listing that names
-/// one of these is an accessory, wherever the word stands in its title.
-const ACCESSORY_WORDS: [&str; 37] = [
+/// one of these is an accessory, wherever the word stands in its title. Romanian and
+/// English as stores write them, and Russian as [`normalize`] transliterates it.
+const ACCESSORY_WORDS: &[&str] = &[
+    // Cases and covers.
     "husa",
     "huse",
     "case",
@@ -43,6 +45,10 @@ const ACCESSORY_WORDS: [&str; 37] = [
     "carcasa",
     "bumper",
     "toc",
+    "chekhol",
+    "chekhly",
+    "nakladka",
+    // Screen protection.
     "sticla",
     "sticle",
     "folie",
@@ -50,32 +56,48 @@ const ACCESSORY_WORDS: [&str; 37] = [
     "protector",
     "protectie",
     "glass",
+    "steklo",
+    "zashchitnoe",
+    "plenka",
+    "plionka",
+    // Power and cables.
     "cablu",
     "cabluri",
     "cable",
+    "kabel",
     "incarcator",
     "charger",
+    "zariadnoe",
     "adaptor",
     "adapter",
     "alimentator",
+    "acumulator",
+    "baterie",
+    "battery",
+    "akkumuliator",
+    "batareia",
+    // Carrying and holding.
     "suport",
     "holder",
+    "derzhatel",
+    "podstavka",
     "curea",
     "strap",
     "bratara",
+    "remeshok",
     "geanta",
     "rucsac",
+    "sumka",
+    "riukzak",
+    // Small extras.
     "stylus",
     "skin",
     "sticker",
     "stickere",
-    "acumulator",
-    "baterie",
-    "battery",
 ];
 /// Words that mark an accessory only when a title opens with them: "Joc PS5 …" is a
 /// game, while "PlayStation 5 + joc" is a console sold with one.
-const ACCESSORY_LEADS: [&str; 4] = ["joc", "jocuri", "game", "games"];
+const ACCESSORY_LEADS: &[&str] = &["joc", "jocuri", "game", "games", "igra", "igry"];
 
 /// Whether a title (already passed through [`normalize`]) names an accessory.
 pub fn names_accessory(normalized_title: &str) -> bool {
@@ -175,6 +197,10 @@ mod tests {
         assert!(accessory("Sticla de pro tectie HELMET DIAMOND 5D IPHONE 15 PRO , BLACK"));
         assert!(accessory("Joc PS5 EA Sports FC 25"));
         assert!(accessory("Acumulator Hoco Battery J112 Pro for Apple iPhone 15 Pro"));
+        // Russian titles, as some stores write them.
+        assert!(accessory("Чехол Helmet TPU Soft iPhone 15 Pro Clear"));
+        assert!(accessory("Защитное стекло для iPhone 15 Pro"));
+        assert!(!accessory("Смартфон Apple iPhone 15 128GB Black"));
         assert!(!accessory("Telefon mobil iPhone 15 Pro 1TB Blue Titanium"));
         assert!(!accessory("Consolă Sony PlayStation 5 Slim + joc EA FC 25"));
         assert!(!accessory("Laptop gaming ASUS ROG Strix"));
