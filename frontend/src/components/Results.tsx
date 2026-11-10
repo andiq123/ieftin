@@ -51,8 +51,6 @@ export function Results({ filters, updateFilters, stores }: Props) {
   const storeName = storeNamer(stores)
   const cheapestBani = filters.sort === 'price_asc' ? offers[0]?.price_bani : undefined
   const { accessories_total: accessories, accessories_hidden: hidden } = first
-  // Nothing but accessories matched, so they are shown instead of an empty page.
-  const onlyAccessories = accessories > 0 && hidden === 0 && !filters.accessories
   // A new search is running while the previous results are still on screen.
   const changing = search.isPlaceholderData
 
@@ -68,27 +66,20 @@ export function Results({ filters, updateFilters, stores }: Props) {
           </h2>
           <div className="facts">
             <Sources reports={first.sources} storeName={storeName} />
-            {onlyAccessories ? (
+            {accessories > 0 && (
               <span className="fact">
-                <Icon name="eye" />
-                Only accessories found for this search
+                <Icon name={filters.accessories ? 'eye' : 'eye-off'} />
+                {filters.accessories
+                  ? `${formatCount(accessories)} accessories shown`
+                  : `${formatCount(hidden)} ${hidden === 1 ? 'accessory' : 'accessories'} hidden`}
+                <button
+                  className="button button--small"
+                  type="button"
+                  onClick={() => updateFilters({ accessories: !filters.accessories })}
+                >
+                  {filters.accessories ? 'Hide' : 'Show all'}
+                </button>
               </span>
-            ) : (
-              accessories > 0 && (
-                <span className="fact">
-                  <Icon name={filters.accessories ? 'eye' : 'eye-off'} />
-                  {filters.accessories
-                    ? `${formatCount(accessories)} accessories shown`
-                    : `${formatCount(hidden)} ${hidden === 1 ? 'accessory' : 'accessories'} hidden`}
-                  <button
-                    className="button button--small"
-                    type="button"
-                    onClick={() => updateFilters({ accessories: !filters.accessories })}
-                  >
-                    {filters.accessories ? 'Hide' : 'Show all'}
-                  </button>
-                </span>
-              )
             )}
           </div>
         </div>
@@ -97,6 +88,18 @@ export function Results({ filters, updateFilters, stores }: Props) {
           first.sources.some((source) => source.pending) ? (
             <Notice icon="spinner" title="Nothing yet">
               Some stores are still answering.
+            </Notice>
+          ) : hidden > 0 ? (
+            // Stores have things for it, but not the thing itself.
+            <Notice
+              icon="search"
+              title={`No “${filters.q.trim()}” found`}
+              action={{
+                label: `Show ${formatCount(hidden)} ${hidden === 1 ? 'accessory' : 'accessories'}`,
+                onClick: () => updateFilters({ accessories: true }),
+              }}
+            >
+              No store sells it right now. There are accessories for it.
             </Notice>
           ) : (
             <Notice icon="search" title="No offers">

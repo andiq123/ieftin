@@ -54,8 +54,7 @@ pub struct Results {
     /// How many matches are accessories or related items (cases, games, cables…)
     /// rather than the product searched for.
     pub accessories_total: usize,
-    /// How many of those were left out of this answer. They stay in when asked for,
-    /// and when nothing but accessories matched: better those than an empty page.
+    /// How many of those were left out of this answer: all of them, unless asked for.
     pub accessories_hidden: usize,
 }
 
@@ -69,7 +68,9 @@ pub fn assemble(mut offers: Vec<Offer>, text: &TextQuery, filters: &Filters) -> 
     let judge = filters.category.is_none() && filters.min_price.is_none() && !text.wants_accessory();
     let accessory = if judge { accessories(&offers, text.words()) } else { vec![false; offers.len()] };
     let accessories_total = accessory.iter().filter(|is| **is).count();
-    let hide = !filters.include_accessories && accessories_total < offers.len();
+    // Never shown unasked, even when nothing else matched: a page of cases is not an
+    // answer to a search for the phone. The count lets the page offer them instead.
+    let hide = !filters.include_accessories;
     let accessories_hidden = if hide { accessories_total } else { 0 };
     if hide {
         let mut keep = accessory.iter().map(|is| !is);
@@ -238,10 +239,11 @@ mod tests {
     }
 
     #[test]
-    fn shows_accessories_when_nothing_else_matched() {
+    fn offers_accessories_when_nothing_else_matched() {
         let offers: Vec<_> = (0..5).map(|i| offer("a", &format!("Husa iPhone 12 {i}"), 100 + i, None)).collect();
         let found = results(offers, "iphone 12", Filters::default());
-        assert_eq!((found.total, found.accessories_total, found.accessories_hidden), (5, 5, 0));
+        // Nothing is listed, and the count says what could be.
+        assert_eq!((found.total, found.accessories_total, found.accessories_hidden), (0, 5, 5));
     }
 
     #[test]

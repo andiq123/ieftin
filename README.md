@@ -35,8 +35,9 @@ search ──▶ every working store's own search page, asked now ──▶ one 
   by price, the phones would be buried. Listings that name an accessory (husă, case,
   sticlă, cablu…) are set aside, and so is whatever is priced far below where the
   product's own prices start. The page says how many were hidden and offers "show
-  all". Accessories are shown anyway when nothing else matched, and are the product
-  when the search asks for one ("husa iphone 15").
+  all". When nothing but accessories matched, the page says the product was not
+  found and offers them. They are the product when the search asks for one
+  ("husa iphone 15").
 - **Health check** – each store is tested with a known query when the server starts
   and every six hours after. One that fails is left out of searches and retried
   every half hour. The *Stores* page shows each store's state. Nothing is stored: a

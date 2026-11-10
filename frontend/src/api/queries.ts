@@ -21,7 +21,11 @@ export function useStores() {
     queryKey: ['stores'],
     queryFn: () => get<Store[]>('/stores'),
     refetchInterval: ({ state }) =>
-      state.errorUpdatedAt > state.dataUpdatedAt ? RETRY_INTERVAL : state.data?.some(isBusy) ? LIVE_INTERVAL : IDLE_INTERVAL,
+      state.errorUpdatedAt > state.dataUpdatedAt
+        ? RETRY_INTERVAL
+        : state.data?.some(isBusy)
+          ? LIVE_INTERVAL
+          : IDLE_INTERVAL,
   })
 }
 
